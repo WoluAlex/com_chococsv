@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<extension type="component" method="upgrade">
+	<name>COM_CHOCOCSV</name>
+	<element>com_chococsv</element>
+	<creationDate>2024-02-19</creationDate>
+	<author>Mr Alexandre J-S William ELISÉ</author>
+	<authorEmail>code@apiadept.com</authorEmail>
+	<authorUrl>https://apiadept.com</authorUrl>
+	<copyright>Copyright (c) 2009 - present. https://apiadept.com. All rights reserved</copyright>
+	<license>AGPL-3.0-or-later</license>
+	<version>0.1.0</version>
+	<description>COM_CHOCOCSV_XML_DESCRIPTION</description>
+
+	<!-- Really important for autoloading -->
+	<namespace path="src">AlexApi\Component\Chococsv</namespace>
+
+	<!-- Script file -->
+	<scriptfile>script.php</scriptfile>
+
+	<!-- Media files -->
+	<media folder="media" destination="com_chococsv">
+		<folder>data</folder>
+		<folder>report</folder>
+	</media>
+
+	<!-- Frond-end files -->
+	<files folder="components/com_chococsv">
+		<folder>src</folder>
+		<filename>LICENSE.txt</filename>
+	</files>
+
+	<!-- Back-end files -->
+	<administration>
+		<files folder="administrator/components/com_chococsv">
+			<filename>access.xml</filename>
+			<filename>config.xml</filename>
+			<folder>forms</folder>
+			<folder>src</folder>
+			<folder>services</folder>
+			<filename>LICENSE.txt</filename>
+		</files>
+
+		<!-- Back-end language files -->
+		<languages folder="administrator/components/com_chococsv/language">
+			<language tag="en-GB">en-GB/com_chococsv.ini</language>
+			<language tag="en-GB">en-GB/com_chococsv.sys.ini</language>
+			<language tag="fr-FR">fr-FR/com_chococsv.ini</language>
+			<language tag="fr-FR">fr-FR/com_chococsv.sys.ini</language>
+		</languages>
+
+	</administration>
+</extension>
