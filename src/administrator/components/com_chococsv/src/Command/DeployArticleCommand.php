@@ -12,6 +12,7 @@ namespace AlexApi\Component\Chococsv\Administrator\Command;
 // phpcs:disable PSR1.Files.SideEffects
 use AlexApi\Component\Chococsv\Administrator\Behaviour\WebserviceToolboxBehaviour;
 use DomainException;
+use Exception;
 use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
@@ -27,6 +28,8 @@ use Joomla\Language\Language;
 use Joomla\Registry\Registry;
 use Joomla\String\StringHelper;
 use Joomla\Utilities\ArrayHelper;
+use JsonException;
+use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
 use Symfony\Component\Console\Style\StyleInterface;
@@ -384,7 +387,7 @@ TEXT;
      * @param   string  $type
      *
      * @return void
-     * @throws \Exception
+     * @throws Exception
      */
     private function enqueueMessage(
         string $message,
@@ -480,7 +483,7 @@ TEXT;
      * @param   int    $isSilent
      *
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     private function nestedJsonDataStructure(array $arr, int $isSilent = 0): array
     {
@@ -548,7 +551,7 @@ TEXT;
      *
      * @return void
      * @throws Throwable
-     * @throws \JsonException
+     * @throws JsonException
      */
     private function csvReader(
         string $url,
@@ -588,6 +591,8 @@ TEXT;
             throw new RuntimeException('Could not read csv file', 500);
         }
 
+        $currentCsvLineNumber = 1;
+
         try {
             stream_set_blocking($resource, false);
 
@@ -601,10 +606,9 @@ TEXT;
                 throw new RuntimeException('First line MUST NOT be empty. It is the header', 422);
             }
 
-            $csvHeaderKeys        = str_getcsv($firstLine);
-            $commonKeys           = array_intersect($csvHeaderKeys, $mergedKeys);
-            $currentCsvLineNumber = 1;
-            $isExpanded           = ($lineRange !== []);
+            $csvHeaderKeys = str_getcsv($firstLine);
+            $commonKeys    = array_intersect($csvHeaderKeys, $mergedKeys);
+            $isExpanded    = ($lineRange !== []);
 
             if ($isExpanded) {
                 if (count($lineRange) === 1) {
@@ -617,7 +621,7 @@ TEXT;
                 }
             }
 
-            while (!$isFinished && !feof($resource)) {
+            while (!$this->isDone && !feof($resource)) {
                 $currentLine = stream_get_line(
                     $resource,
                     0,
@@ -662,7 +666,7 @@ TEXT;
 
                     // Stop processing immediately if it goes beyond range
                     if (($isExpanded && count($lineRange) > 1) && ($currentCsvLineNumber > $maxLineNumber)) {
-                        $isFinished = true;
+                        $this->isDone = true;
                         throw new DomainException(
                             sprintf(
                                 'Processing of CSV file done. Last line processed was line %d',
@@ -673,7 +677,7 @@ TEXT;
 
                     if ($encodedContent === false) {
                         throw new RuntimeException('Current line seem to be invalid', 422);
-                    } elseif (!$isFinished && ((is_string($encodedContent) && (($isExpanded && in_array(
+                    } elseif (!$this->isDone && ((is_string($encodedContent) && (($isExpanded && in_array(
                                         $currentCsvLineNumber,
                                         $lineRange,
                                         true
@@ -684,7 +688,7 @@ TEXT;
                         if ($isExpanded && (count(
                                     $lineRange
                                 ) === 1 && ($currentCsvLineNumber === $maxLineNumber))) {
-                            $isFinished = true;
+                            $this->isDone = true;
                             throw new DomainException(
                                 sprintf(
                                     'Processing of CSV file done. Last line processed was line %d',
@@ -739,7 +743,7 @@ TEXT;
      * @param   array  $dataValue
      *
      * @return void
-     * @throws \JsonException
+     * @throws JsonException
      */
     private function processEachCsvLineData(array $dataValue)
     {
@@ -885,7 +889,7 @@ TEXT;
 
     /**
      * @return void
-     * @throws \Exception
+     * @throws Exception
      */
     private function deployScript()
     {
