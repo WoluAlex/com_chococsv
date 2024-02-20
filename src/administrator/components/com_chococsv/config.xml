@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
 <fields name="params">
-			<fieldset name="basic">
+	<fieldset name="basic" label="COM_CONFIG_BASIC_FIELDSET_LABEL">
 				<field name="is_local"
 					   type="radio"
 					   default="1"
@@ -60,7 +60,7 @@
 					   required="true"
 				/>
 			</fieldset>
-			<fieldset name="advanced">
+	<fieldset name="advanced" label="COM_CONFIG_ADVANCED_FIELDSET_LABEL">
 				<field name="extra_features" type="spacer" class="text"
 					   label="COM_CHOCOCSV_EXTRA_FEATURES_LABEL" />
 				<field name="show_ascii_banner"
