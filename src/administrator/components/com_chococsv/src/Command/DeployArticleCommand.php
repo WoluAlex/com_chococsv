@@ -240,7 +240,7 @@ TEXT;
 // This MUST be a json file otherwise it might fail
         defined('CSV_PROCESSING_REPORT_FILEPATH') || define(
             'CSV_PROCESSING_REPORT_FILEPATH',
-            Path::clean(JPATH_PUBLIC . '/media/com_chococsv/report/output.json')
+            Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
         );
 
 
