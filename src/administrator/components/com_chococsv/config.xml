@@ -1,118 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <config>
-<fields name="params">
-			<fieldset name="basic">
-				<field name="is_local"
-					   type="radio"
-					   default="1"
-					   label="COM_CHOCOCSV_IS_LOCAL_LABEL"
-					   description="COM_CHOCOCSV_IS_LOCAL_DESCRIPTION"
-					   layout="joomla.form.field.radio.switcher"
-					   filter="integer"
-					   required="true"
-				>
-					<option value="0">JNO</option>
-					<option value="1">JYES</option>
-				</field>
-				<field name="local_file"
-					   type="filelist"
-					   directory="media/com_chococsv/data"
-					   filter="([a-zA-Z\-\_]{1,50})\.csv"
-					   exclude="(.+)\.(html|php|exe|py|js|java)"
-					   showon="is_local:1"
-					   label="COM_CHOCOCSV_LOCAL_FILE_LABEL"
-					   description="COM_CHOCOCSV_LOCAL_FILE_DESCRIPTION"
-					   icon="file"
-				/>
-				<field name="remote_file"
-					   type="url"
-					   scheme="http,https"
-					   relative="false"
-					   hint="https://example.org/sample-data.csv"
-					   default=""
-					   maxlength="400"
-					   label="COM_CHOCOCSV_REMOTE_FILE_LABEL"
-					   description="COM_CHOCOCSV_REMOTE_FILE_DESCRIPTION"
-					   showon="is_local:0"
-					   icon="globe"
-				/>
-				<field
-					name="what_line_numbers_you_want"
-					type="text"
-					default=""
-					hint="9,7-7,2-4,10,17-14,21"
-					label="COM_CHOCOCSV_WHAT_LINE_NUMBERS_YOU_WANT_LABEL"
-					description="COM_CHOCOCSV_WHAT_LINE_NUMBERS_YOU_WANT_DESCRIPTION"
-					icon="printer"
-				/>
-
-				<field name="destinations"
-					   type="subform"
-					   label="COM_CHOCOCSV_DESTINATIONS_LABEL"
-					   description="COM_CHOCOCSV_DESTINATIONS_DESCRIPTION"
-					   formsource="/administrator/components/com_chococsv/forms/tokenindex.xml"
-					   multiple="true"
-					   min="1"
-					   groupByFieldset="true"
-					   layout="joomla.form.field.subform.repeatable-table"
-					   icon="list"
-					   validate="subform"
-					   required="true"
-				/>
-			</fieldset>
-			<fieldset name="advanced">
-				<field name="extra_features" type="spacer" class="text"
-					   label="COM_CHOCOCSV_EXTRA_FEATURES_LABEL" />
-				<field name="show_ascii_banner"
-					   type="radio"
-					   default="0"
-					   label="COM_CHOCOCSV_SHOW_ASCII_BANNER_LABEL"
-					   description="COM_CHOCOCSV_SHOW_ASCII_BANNER_DESCRIPTION"
-					   layout="joomla.form.field.radio.switcher"
-					   filter="integer"
-				>
-					<option value="0">JNO</option>
-					<option value="1">JYES</option>
-				</field>
-				<field name="silent_mode"
-					   type="radio"
-					   default="0"
-					   label="COM_CHOCOCSV_SILENT_MODE_LABEL"
-					   description="COM_CHOCOCSV_SILENT_MODE_DESCRIPTION"
-					   layout="joomla.form.field.radio.buttons"
-					   filter="integer"
-				>
-					<option value="0">COM_CHOCOCSV_SILENT_MODE_0_LABEL</option>
-					<option value="1">COM_CHOCOCSV_SILENT_MODE_1_LABEL</option>
-					<option value="2">COM_CHOCOCSV_SILENT_MODE_2_LABEL</option>
-				</field>
-				<field name="save_report_to_file"
-					   type="radio"
-					   default="0"
-					   label="COM_CHOCOCSV_SAVE_REPORT_TO_FILE_LABEL"
-					   description="COM_CHOCOCSV_SAVE_REPORT_TO_FILE_DESCRIPTION"
-					   layout="joomla.form.field.radio.buttons"
-					   filter="integer"
-				>
-					<option value="0">COM_CHOCOCSV_SAVE_REPORT_TO_FILE_0_LABEL</option>
-					<option value="1">COM_CHOCOCSV_SAVE_REPORT_TO_FILE_1_LABEL</option>
-					<option value="2">COM_CHOCOCSV_SAVE_REPORT_TO_FILE_2_LABEL</option>
-				</field>
-			</fieldset>
-		</fields>
-	<fieldset
-		name="permissions"
-		label="JCONFIG_PERMISSIONS_LABEL"
-		description="JCONFIG_PERMISSIONS_DESC"
-		>
-		<field
-			name="rules"
-			type="rules"
-			label="JCONFIG_PERMISSIONS_LABEL"
-			validate="rules"
-			filter="rules"
-			component="com_chococsv"
-			section="component"
-		/>
-	</fieldset>
+    <fields name="params">
+        <fieldset name="basic" label="COM_CONFIG_BASIC_FIELDSET_LABEL">
+            <field name="destinations"
+                   type="subform"
+                   label="COM_CHOCOCSV_DESTINATIONS_LABEL"
+                   description="COM_CHOCOCSV_DESTINATIONS_DESCRIPTION"
+                   formsource="/administrator/components/com_chococsv/forms/destination.xml"
+                   multiple="true"
+                   min="1"
+                   groupByFieldset="true"
+                   layout="joomla.form.field.subform.repeatable-table"
+                   icon="list"
+                   required="true"
+            />
+        </fieldset>
+        <fieldset name="advanced" label="COM_CONFIG_ADVANCED_FIELDSET_LABEL">
+            <field name="extra_features" type="spacer" class="text"
+                   label="COM_CHOCOCSV_EXTRA_FEATURES_LABEL" />
+            <field name="show_ascii_banner"
+                   type="radio"
+                   default="0"
+                   label="COM_CHOCOCSV_SHOW_ASCII_BANNER_LABEL"
+                   description="COM_CHOCOCSV_SHOW_ASCII_BANNER_DESCRIPTION"
+                   layout="joomla.form.field.radio.switcher"
+                   filter="integer"
+            >
+                <option value="0">JNO</option>
+                <option value="1">JYES</option>
+            </field>
+            <field name="silent_mode"
+                   type="radio"
+                   default="0"
+                   label="COM_CHOCOCSV_SILENT_MODE_LABEL"
+                   description="COM_CHOCOCSV_SILENT_MODE_DESCRIPTION"
+                   layout="joomla.form.field.radio.buttons"
+                   filter="integer"
+            >
+                <option value="0">COM_CHOCOCSV_SILENT_MODE_0_LABEL</option>
+                <option value="1">COM_CHOCOCSV_SILENT_MODE_1_LABEL</option>
+                <option value="2">COM_CHOCOCSV_SILENT_MODE_2_LABEL</option>
+            </field>
+            <field name="save_report_to_file"
+                   type="radio"
+                   default="0"
+                   label="COM_CHOCOCSV_SAVE_REPORT_TO_FILE_LABEL"
+                   description="COM_CHOCOCSV_SAVE_REPORT_TO_FILE_DESCRIPTION"
+                   layout="joomla.form.field.radio.buttons"
+                   filter="integer"
+            >
+                <option value="0">COM_CHOCOCSV_SAVE_REPORT_TO_FILE_0_LABEL</option>
+                <option value="1">COM_CHOCOCSV_SAVE_REPORT_TO_FILE_1_LABEL</option>
+                <option value="2">COM_CHOCOCSV_SAVE_REPORT_TO_FILE_2_LABEL</option>
+            </field>
+        </fieldset>
+    </fields>
+    <fieldset
+            name="permissions"
+            label="JCONFIG_PERMISSIONS_LABEL"
+            description="JCONFIG_PERMISSIONS_DESC"
+    >
+        <field
+                name="rules"
+                type="rules"
+                label="JCONFIG_PERMISSIONS_LABEL"
+                validate="rules"
+                filter="rules"
+                component="com_chococsv"
+                section="component"
+        />
+    </fieldset>
 </config>

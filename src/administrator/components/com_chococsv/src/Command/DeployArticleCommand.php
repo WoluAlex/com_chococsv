@@ -12,6 +12,8 @@ namespace AlexApi\Component\Chococsv\Administrator\Command;
 // phpcs:disable PSR1.Files.SideEffects
 use AlexApi\Component\Chococsv\Administrator\Behaviour\WebserviceToolboxBehaviour;
 use DomainException;
+use Exception;
+use InvalidArgumentException;
 use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
@@ -26,7 +28,8 @@ use Joomla\Http\TransportInterface;
 use Joomla\Language\Language;
 use Joomla\Registry\Registry;
 use Joomla\String\StringHelper;
-use Joomla\Utilities\ArrayHelper;
+use JsonException;
+use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
 use Symfony\Component\Console\Style\StyleInterface;
@@ -63,10 +66,10 @@ use function sprintf;
 use function str_contains;
 use function str_getcsv;
 use function str_replace;
+use function str_starts_with;
 use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
-use function strpos;
 use function trim;
 
 use const ANSI_COLOR_BLUE;
@@ -127,21 +130,13 @@ TEXT;
     private StyleInterface|null $consoleOutputStyle;
 
     /**
-     * @var bool
-     */
-    private bool $showAsciiBanner = false;
-    /**
      * @var int
      */
     private int $silent = 0;
     /**
      * @var string
      */
-    private string $csvUrl = '';
-    /**
-     * @var string
-     */
-    private string $whatLineNumbersYouWant = '';
+    private array $csvUrl = [];
     /**
      * @var array
      */
@@ -163,7 +158,7 @@ TEXT;
     /**
      * @var bool
      */
-    private bool $isDone = false;
+    private array $isDone = [];
 
     /**
      * @var array
@@ -172,7 +167,7 @@ TEXT;
     /**
      * @var bool
      */
-    private bool $isExpanded = false;
+    private array $isExpanded = [];
     /**
      * @var int
      */
@@ -197,6 +192,7 @@ TEXT;
      * @var Language|null
      */
     private Language|null $language = null;
+    private string $tokenindex = '';
 
     /**
      *
@@ -211,10 +207,8 @@ TEXT;
     /**
      * @return void
      */
-    public function deploy()
+    public function deploy(): void
     {
-        ini_set('auto_detect_line_endings', true);
-
         ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
         ini_set('error_log', '');
         ini_set('log_errors', 1);
@@ -237,66 +231,32 @@ TEXT;
 // This MUST be a json file otherwise it might fail
         defined('CSV_PROCESSING_REPORT_FILEPATH') || define(
             'CSV_PROCESSING_REPORT_FILEPATH',
-            Path::clean(JPATH_PUBLIC . '/media/com_chococsv/report/output.json')
+            Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
         );
 
-
 // Wether or not to show ASCII banner true to show , false otherwise. Default is to show the ASCII art banner
-        $this->showAsciiBanner = (bool)$this->getParams()->get('show_ascii_banner', 0);
-
-// Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
-        $isLocal = (bool)$this->getParams()->get('is_local', 1);
-
-// IF THIS URL DOES NOT EXIST IT WILL CRASH THE SCRIPT. CHANGE THIS TO YOUR OWN URL
-        // For example: https://example.org/sample-data.csv';
-        $this->csvUrl = PunycodeHelper::urlToUTF8((string)$this->getParams()->get('remote_file', ''));
-        if ($isLocal) {
-            $localCsvFile = Path::clean($this->getParams()->get('local_file', ''));
-            if (is_readable($localCsvFile)) {
-                $this->csvUrl = $localCsvFile;
-            }
-        }
+        $showAsciiBanner = (bool)$this->getParams()->get('params.show_ascii_banner', 0);
 
 // Silent mode
 // 0: hide both response result and key value pairs
 // 1: show response result only
 // 2: show key value pairs only
 // Set to 0 if you want to squeeze out performance of this script to the maximum
-        $this->silent = (int)$this->getParams()->get('silent_mode', 0);
+        $this->silent = (int)$this->getParams()->get('params.silent_mode', 0);
 
-// Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
-        $this->whatLineNumbersYouWant = $this->getParams()->get('what_line_numbers_you_want', '');
 
 // Do you want a report after processing?
 // 0: no report, 1: success & errors, 2: errors only
 // When using report feature. Silent mode MUST be set to 1. Otherwise you might have unexpected results.
 // Set to 0 if you want to squeeze out performance of this script to the maximum
 // If enabled, this will create a output.json file
-        $this->saveReportToFile = (int)$this->getParams()->get('save_report_to_file', 0);
+        $this->saveReportToFile = (int)$this->getParams()->get('params.save_report_to_file', 0);
 
 // Show the ASCII Art banner or not
         $enviromentAwareDisplay = (IS_CLI ? self::ASCII_BANNER : sprintf('<pre>%s</pre>', self::ASCII_BANNER));
 
-        $this->failedCsvLines     = [];
-        $this->successfulCsvLines = [];
-        $this->isDone             = false;
-
-        $this->enqueueMessage(
-            $this->showAsciiBanner ? sprintf(
-                '%s %s %s%s',
-                ANSI_COLOR_BLUE,
-                $enviromentAwareDisplay,
-                ANSI_COLOR_NORMAL,
-                CUSTOM_LINE_END
-            ) : ''
-        );
-
-        $this->expandedLineNumbers = $this->chooseLinesLikeAPrinter($this->whatLineNumbersYouWant);
-        $this->isExpanded          = ($this->expandedLineNumbers !== []);
-
-
         try {
-            $destinations = $this->getParams()->get('destinations', []);
+            $destinations = $this->getParams()->get('params.destinations', []);
 
             if (empty($destinations)) {
                 throw new DomainException(
@@ -305,51 +265,162 @@ TEXT;
                 );
             }
 
-            $computedDestinations        = new Registry($destinations);
-            $computedDestinationsToArray = $computedDestinations->toArray();
-
-            // Your Joomla! website base url
-            $this->baseUrl = ArrayHelper::getColumn($computedDestinationsToArray, 'base_url', 'tokenindex');
-
-            // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-            $this->token    = ArrayHelper::getColumn($computedDestinationsToArray, 'api_authtoken', 'tokenindex');
-            $this->basePath = ArrayHelper::getColumn($computedDestinationsToArray, 'base_path', 'tokenindex');
-
-            // Other Joomla articles fields
-            $this->extraDefaultFieldKeys = ArrayHelper::getColumn(
-                $computedDestinationsToArray,
-                'extra_default_fields',
-                'tokenindex'
+            $this->enqueueMessage(
+                $showAsciiBanner ? sprintf(
+                    '%s %s %s%s',
+                    ANSI_COLOR_BLUE,
+                    $enviromentAwareDisplay,
+                    ANSI_COLOR_NORMAL,
+                    CUSTOM_LINE_END
+                ) : ''
             );
+
+            $computedDestinations         = new Registry($destinations);
+            $computedDestinationsToObject = $computedDestinations->toObject();
+
+            foreach ($computedDestinationsToObject as $destination) {
+                if (!$destination->ref->is_active) {
+                    continue;
+                }
+
+                if (empty($destination->ref->tokenindex)) {
+                    continue;
+                }
+                $this->tokenindex = $destination->ref->tokenindex;
+
+                $this->failedCsvLines[$this->tokenindex] = [];
+                $this->successfulCsvLines[$this->tokenindex] = [];
+                $this->isDone[$this->tokenindex] = false;
+
+
+                // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
+                $isLocal = (bool)$destination->ref->is_local;
+
+// IF THIS URL DOES NOT EXIST IT WILL CRASH THE SCRIPT. CHANGE THIS TO YOUR OWN URL
+                // For example: https://example.org/sample-data.csv';
+                $this->csvUrl[$this->tokenindex] = PunycodeHelper::urlToUTF8(
+                    (string)$destination->ref->remote_file ?? ''
+                );
+                if ($isLocal) {
+                    $localCsvFileFromParams = $destination->ref->local_file ?? '';
+                    if (empty($localCsvFileFromParams)) {
+                        throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
+                    }
+                    $localCsvFile = Path::clean(
+                        sprintf('%s/media/com_chococsv/data/%s', JPATH_ROOT, $localCsvFileFromParams)
+                    );
+                    if (is_readable($localCsvFile)) {
+                        $this->csvUrl[$this->tokenindex] = $localCsvFile;
+                    }
+                }
+
+                if (empty($this->csvUrl[$this->tokenindex])) {
+                    throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
+                }
+
+
+// Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
+                $whatLineNumbersYouWant = $destination->ref->what_line_numbers_you_want ?? '';
+
+
+                $this->expandedLineNumbers[$this->tokenindex] = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
+                $this->isExpanded[$this->tokenindex]          = ($this->expandedLineNumbers[$this->tokenindex] !== []);
+
+
+                // Your Joomla! website base url
+                $this->baseUrl[$destination->ref->tokenindex] = $destination->ref->base_url;
+
+                // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
+                $this->token[$destination->ref->tokenindex] = $destination->ref->auth_apikey;
+                $this->basePath[$destination->ref->tokenindex] = $destination->ref->base_path;
+
+                // Other Joomla articles fields
+                $this->extraDefaultFieldKeys[$destination->ref->tokenindex] = $destination->ref->extra_default_fields;
 
 // Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
 // The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
 // For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
-            $this->customFieldKeys = ArrayHelper::getColumn(
-                $computedDestinationsToArray,
-                'custom_fields',
-                'tokenindex'
-            );
+                $this->customFieldKeys[$destination->ref->tokenindex] = $destination->ref->custom_fields;
 
-            $this->deployScript();
+                try {
+                    $this->csvReader(
+                        $this->csvUrl[$this->tokenindex],
+                        $this->silent,
+                        $this->expandedLineNumbers[$this->tokenindex],
+                        $this->failedCsvLines[$this->tokenindex],
+                        $this->successfulCsvLines[$this->tokenindex],
+                        $this->isDone[$this->tokenindex]
+                    );
+                } catch (DomainException $domainException) {
+                    if ($this->silent == 1) {
+                        $this->enqueueMessage(
+                            sprintf(
+                                '%s%s%s%s',
+                                ANSI_COLOR_GREEN,
+                                $domainException->getMessage(),
+                                ANSI_COLOR_NORMAL,
+                                CUSTOM_LINE_END
+                            )
+                        );
+                    }
+                } catch (Throwable $fallbackCatchAllUncaughtException) {
+                    // Ignore silent mode when stumbling upon fallback exception
+                    $this->enqueueMessage(
+                        sprintf(
+                            '%s Error message: %s, Error code line: %d%s%s',
+                            ANSI_COLOR_RED,
+                            $fallbackCatchAllUncaughtException->getMessage(),
+                            $fallbackCatchAllUncaughtException->getLine(),
+                            ANSI_COLOR_NORMAL,
+                            CUSTOM_LINE_END
+                        ),
+                        'error'
+                    );
+                } finally {
+                    $this->isDone[$this->tokenindex] = true;
+
+                    if (in_array($this->saveReportToFile, [1, 2], true)) {
+                        $errors = [];
+                        if (!file_exists(CSV_PROCESSING_REPORT_FILEPATH)) {
+                            File::write(CSV_PROCESSING_REPORT_FILEPATH, '');
+                        }
+                        if (!empty($this->failedCsvLines[$this->tokenindex])) {
+                            $errors = ['errors' => $this->failedCsvLines[$this->tokenindex]];
+                            if ($this->saveReportToFile === 2) {
+                                File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode($errors));
+                            }
+                        }
+                        if (($this->saveReportToFile === 1) && !empty($this->successfulCsvLines[$this->tokenindex])) {
+                            $success = ['success' => $this->successfulCsvLines[$this->tokenindex]];
+                            File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode(array_merge($errors, $success)));
+                        }
+                    }
+
+                    $this->enqueueMessage(sprintf('Done%s', CUSTOM_LINE_END));
+                }
+            }
         } catch (Throwable $e) {
             $this->enqueueMessage(
                 sprintf(
-                    '%s%d%s%s',
+                    '[%d] %s %s:%d Trace: %s Previous: %s',
+                    $e->getCode(),
                     $e->getMessage(),
+                    $e->getFile(),
                     $e->getLine(),
                     $e->getTraceAsString(),
                     $e->getPrevious() ? $e->getPrevious()->getTraceAsString() : ''
                 ),
                 'error'
             );
+            // Rethrow exception to make the command fail as it should on failure
+            throw $e;
         }
     }
 
     /**
      * @return bool
      */
-    private function isSupported()
+    private function isSupported(): bool
     {
         return ComponentHelper::isInstalled('com_chococsv') && ComponentHelper::isEnabled('com_chococsv');
     }
@@ -384,7 +455,7 @@ TEXT;
      * @param   string  $type
      *
      * @return void
-     * @throws \Exception
+     * @throws Exception
      */
     private function enqueueMessage(
         string $message,
@@ -398,7 +469,14 @@ TEXT;
         $app = Factory::getApplication();
         if ($app instanceof ConsoleApplication) {
             $outputFormatter = new SymfonyStyle($app->getConsoleInput(), $app->getConsoleOutput());
-            $outputFormatter->$type($message) || $outputFormatter->text($message);
+            if ($type === 'message') {
+                $type = 'success';
+            }
+            try {
+                $outputFormatter->$type($message);
+            } catch (Throwable) {
+                $outputFormatter->text($message);
+            }
         } elseif ($app instanceof CMSApplication) {
             $outputFormatter = [$app, 'enqueueMessage'];
             $outputFormatter($message, $type) || $outputFormatter($message, 'message');
@@ -480,7 +558,7 @@ TEXT;
      * @param   int    $isSilent
      *
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     private function nestedJsonDataStructure(array $arr, int $isSilent = 0): array
     {
@@ -490,7 +568,7 @@ TEXT;
             RecursiveIteratorIterator::CATCH_GET_CHILD
         );
         foreach ($iterator as $key => $value) {
-            if (strpos($value, '{') === 0) {
+            if (str_starts_with($value, '{')) {
                 if ($isSilent == 2) {
                     $this->enqueueMessage(
                         sprintf(
@@ -548,7 +626,7 @@ TEXT;
      *
      * @return void
      * @throws Throwable
-     * @throws \JsonException
+     * @throws JsonException
      */
     private function csvReader(
         string $url,
@@ -556,9 +634,10 @@ TEXT;
         array $lineRange = [],
         array &$failed = [],
         array &$successful = []
-    ) {
+    ): void
+    {
         if (empty($url)) {
-            throw new RuntimeException('Url MUST NOT be empty', 422);
+            throw new InvalidArgumentException('Url MUST NOT be empty', 400);
         }
 
         $defaultKeys = [
@@ -577,7 +656,13 @@ TEXT;
             'tokenindex',
         ];
 
-        $mergedKeys = array_unique(array_merge($defaultKeys, $this->extraDefaultFieldKeys, $this->customFieldKeys));
+        $mergedKeys = array_unique(
+            array_merge(
+                $defaultKeys,
+                $this->extraDefaultFieldKeys[$this->tokenindex],
+                $this->customFieldKeys[$this->tokenindex]
+            )
+        );
 
         // Assess robustness of the code by trying random key order
         //shuffle($mergedKeys);
@@ -587,6 +672,8 @@ TEXT;
         if ($resource === false) {
             throw new RuntimeException('Could not read csv file', 500);
         }
+
+        $currentCsvLineNumber = 1;
 
         try {
             stream_set_blocking($resource, false);
@@ -601,10 +688,9 @@ TEXT;
                 throw new RuntimeException('First line MUST NOT be empty. It is the header', 422);
             }
 
-            $csvHeaderKeys        = str_getcsv($firstLine);
-            $commonKeys           = array_intersect($csvHeaderKeys, $mergedKeys);
-            $currentCsvLineNumber = 1;
-            $isExpanded           = ($lineRange !== []);
+            $csvHeaderKeys = str_getcsv($firstLine);
+            $commonKeys    = array_intersect($csvHeaderKeys, $mergedKeys);
+            $isExpanded    = ($lineRange !== []);
 
             if ($isExpanded) {
                 if (count($lineRange) === 1) {
@@ -617,7 +703,7 @@ TEXT;
                 }
             }
 
-            while (!$isFinished && !feof($resource)) {
+            while (!$this->isDone[$this->tokenindex] && !feof($resource)) {
                 $currentLine = stream_get_line(
                     $resource,
                     0,
@@ -662,7 +748,7 @@ TEXT;
 
                     // Stop processing immediately if it goes beyond range
                     if (($isExpanded && count($lineRange) > 1) && ($currentCsvLineNumber > $maxLineNumber)) {
-                        $isFinished = true;
+                        $this->isDone[$this->tokenindex] = true;
                         throw new DomainException(
                             sprintf(
                                 'Processing of CSV file done. Last line processed was line %d',
@@ -673,7 +759,9 @@ TEXT;
 
                     if ($encodedContent === false) {
                         throw new RuntimeException('Current line seem to be invalid', 422);
-                    } elseif (!$isFinished && ((is_string($encodedContent) && (($isExpanded && in_array(
+                    } elseif (!$this->isDone[$this->tokenindex] && ((is_string(
+                                $encodedContent
+                            ) && (($isExpanded && in_array(
                                         $currentCsvLineNumber,
                                         $lineRange,
                                         true
@@ -684,7 +772,7 @@ TEXT;
                         if ($isExpanded && (count(
                                     $lineRange
                                 ) === 1 && ($currentCsvLineNumber === $maxLineNumber))) {
-                            $isFinished = true;
+                            $this->isDone[$this->tokenindex] = true;
                             throw new DomainException(
                                 sprintf(
                                     'Processing of CSV file done. Last line processed was line %d',
@@ -739,12 +827,12 @@ TEXT;
      * @param   array  $dataValue
      *
      * @return void
-     * @throws \JsonException
+     * @throws JsonException
      */
-    private function processEachCsvLineData(array $dataValue)
+    private function processEachCsvLineData(array $dataValue): void
     {
-        if (empty($dataValue)) {
-            return;
+        if (empty($dataValue) || !is_int($dataValue['line'] ?? false) || !isset($dataValue['content'])) {
+            throw new InvalidArgumentException('Empty data. Cannot continue', 422);
         }
 
         $dataCurrentCSVline = $dataValue['line'];
@@ -759,9 +847,9 @@ TEXT;
 
 
         try {
-            if (($decodedDataString === false) || (!isset($token[$decodedDataString->tokenindex]))
+            if (($decodedDataString === false) || (!isset($this->token[$decodedDataString->tokenindex]))
             ) {
-                return;
+                throw new InvalidArgumentException('Empty data. Cannot continue', 422);
             }
 
             // HTTP request headers
@@ -769,7 +857,7 @@ TEXT;
                 'Accept: application/vnd.api+json',
                 'Content-Type: application/json',
                 'Content-Length: ' . strlen($dataString),
-                sprintf('X-Joomla-Token: %s', trim($token[$decodedDataString->tokenindex])),
+                sprintf('X-Joomla-Token: %s', trim($this->token[$decodedDataString->tokenindex])),
             ];
 
             // Article primary key. Usually 'id'
@@ -806,9 +894,9 @@ TEXT;
                     // Retry
                     $this->processEachCsvLineData(['line' => $dataCurrentCSVline, 'content' => $decodedDataString]);
                 }
-            } elseif (isset($decodedJsonOutput->data) && isset($decodedJsonOutput->data->attributes) && !isset($successfulCsvLines[$dataCurrentCSVline])) {
+            } elseif (isset($decodedJsonOutput->data->attributes) && !isset($this->successfulCsvLines[$dataCurrentCSVline])) {
                 if ($this->silent == 1) {
-                    $successfulCsvLines[$dataCurrentCSVline] = sprintf(
+                    $this->successfulCsvLines[$dataCurrentCSVline] = sprintf(
                         "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
                         ANSI_COLOR_GREEN,
                         $decodedDataString->tokenindex,
@@ -821,12 +909,12 @@ TEXT;
                         CUSTOM_LINE_END
                     );
 
-                    $this->enqueueMessage($successfulCsvLines[$dataCurrentCSVline]);
+                    $this->enqueueMessage($this->successfulCsvLines[$dataCurrentCSVline]);
                 }
             }
         } catch (Throwable $e) {
             if ($this->silent == 1) {
-                $failedCsvLines[$dataCurrentCSVline] = sprintf(
+                $this->failedCsvLines[$dataCurrentCSVline] = sprintf(
                     "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
                     ANSI_COLOR_RED,
                     $e->getMessage(),
@@ -835,7 +923,7 @@ TEXT;
                     ANSI_COLOR_NORMAL,
                     CUSTOM_LINE_END
                 );
-                $this->enqueueMessage($failedCsvLines[$dataCurrentCSVline], 'error');
+                $this->enqueueMessage($this->failedCsvLines[$dataCurrentCSVline], 'error');
             }
         }
     }
@@ -855,7 +943,8 @@ TEXT;
         string $dataString,
         array $headers,
         int $timeout = 3
-    ) {
+    ): string
+    {
         $uri      = (new Uri($endpoint));
         $response = $this->getHttpClient()->request(
             $givenHttpVerb,
@@ -874,78 +963,8 @@ TEXT;
      */
     private function endpoint(string $givenBaseUrl, string $givenBasePath, int $givenResourceId = 0): string
     {
-        return $givenResourceId ? sprintf(
-            '%s/%s/%s/%d',
-            $givenBaseUrl,
-            $givenBasePath,
-            'content/articles',
-            $givenResourceId
-        ) : sprintf('%s/%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
-    }
-
-    /**
-     * @return void
-     * @throws \Exception
-     */
-    private function deployScript()
-    {
-        try {
-            $this->csvReader(
-                $this->csvUrl,
-                $this->silent,
-                $this->expandedLineNumbers,
-                $this->failedCsvLines,
-                $this->successfulCsvLines,
-                $this->isDone
-            );
-        } catch (DomainException $domainException) {
-            if ($this->silent == 1) {
-                $this->enqueueMessage(
-                    sprintf(
-                        '%s Error message: %s, Error code line: %d%s%s',
-                        ANSI_COLOR_NORMAL,
-                        $domainException->getMessage(),
-                        $domainException->getLine(),
-                        ANSI_COLOR_NORMAL,
-                        CUSTOM_LINE_END
-                    ),
-                    'message'
-                );
-            }
-        } catch (Throwable $fallbackCatchAllUncaughtException) {
-            // Ignore silent mode when stumbling upon fallback exception
-            $this->enqueueMessage(
-                sprintf(
-                    '%s Error message: %s, Error code line: %d%s%s',
-                    ANSI_COLOR_RED,
-                    $fallbackCatchAllUncaughtException->getMessage(),
-                    $fallbackCatchAllUncaughtException->getLine(),
-                    ANSI_COLOR_NORMAL,
-                    CUSTOM_LINE_END
-                ),
-                'error'
-            );
-        } finally {
-            $this->isDone = true;
-
-            if (in_array($this->saveReportToFile, [1, 2], true)) {
-                $errors = [];
-                if (!file_exists(CSV_PROCESSING_REPORT_FILEPATH)) {
-                    File::write(CSV_PROCESSING_REPORT_FILEPATH, '');
-                }
-                if (!empty($this->failedCsvLines)) {
-                    $errors = ['errors' => $this->failedCsvLines];
-                    if ($this->saveReportToFile === 2) {
-                        File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode($errors),);
-                    }
-                }
-                if (($this->saveReportToFile === 1) && !empty($this->successfulCsvLines)) {
-                    $success = ['success' => $this->successfulCsvLines];
-                    File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode(array_merge($errors, $success)));
-                }
-            }
-
-            $this->enqueueMessage(sprintf('Done%s', CUSTOM_LINE_END));
-        }
+        return $givenResourceId ?
+            sprintf('%s%s/%s/%d', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId)
+            : sprintf('%s%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
     }
 }
