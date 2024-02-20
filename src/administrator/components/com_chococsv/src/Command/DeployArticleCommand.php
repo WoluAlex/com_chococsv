@@ -320,7 +320,7 @@ TEXT;
 
 
 // Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
-                $whatLineNumbersYouWant = $this->getParams()->get('params.what_line_numbers_you_want', '');
+                $whatLineNumbersYouWant = $destination->ref->what_line_numbers_you_want ?? '';
 
 
                 $this->expandedLineNumbers[$this->tokenindex] = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
