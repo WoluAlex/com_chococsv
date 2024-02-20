@@ -69,7 +69,6 @@ use function str_replace;
 use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
-use function strpos;
 use function trim;
 
 use const ANSI_COLOR_BLUE;
@@ -130,10 +129,6 @@ TEXT;
     private StyleInterface|null $consoleOutputStyle;
 
     /**
-     * @var bool
-     */
-    private bool $showAsciiBanner = false;
-    /**
      * @var int
      */
     private int $silent = 0;
@@ -141,10 +136,6 @@ TEXT;
      * @var string
      */
     private string $csvUrl = '';
-    /**
-     * @var string
-     */
-    private string $whatLineNumbersYouWant = '';
     /**
      * @var array
      */
@@ -214,7 +205,7 @@ TEXT;
     /**
      * @return void
      */
-    public function deploy()
+    public function deploy(): void
     {
         ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
         ini_set('error_log', '');
@@ -243,7 +234,7 @@ TEXT;
 
 
 // Wether or not to show ASCII banner true to show , false otherwise. Default is to show the ASCII art banner
-        $this->showAsciiBanner = (bool)$this->getParams()->get('show_ascii_banner', 0);
+        $showAsciiBanner = (bool)$this->getParams()->get('show_ascii_banner', 0);
 
 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
         $isLocal = (bool)$this->getParams()->get('is_local', 1);
@@ -266,7 +257,7 @@ TEXT;
         $this->silent = (int)$this->getParams()->get('silent_mode', 0);
 
 // Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
-        $this->whatLineNumbersYouWant = $this->getParams()->get('what_line_numbers_you_want', '');
+        $whatLineNumbersYouWant = $this->getParams()->get('what_line_numbers_you_want', '');
 
 // Do you want a report after processing?
 // 0: no report, 1: success & errors, 2: errors only
@@ -283,7 +274,7 @@ TEXT;
         $this->isDone             = false;
 
         $this->enqueueMessage(
-            $this->showAsciiBanner ? sprintf(
+            $showAsciiBanner ? sprintf(
                 '%s %s %s%s',
                 ANSI_COLOR_BLUE,
                 $enviromentAwareDisplay,
@@ -292,7 +283,7 @@ TEXT;
             ) : ''
         );
 
-        $this->expandedLineNumbers = $this->chooseLinesLikeAPrinter($this->whatLineNumbersYouWant);
+        $this->expandedLineNumbers = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
         $this->isExpanded          = ($this->expandedLineNumbers !== []);
 
 
@@ -337,7 +328,7 @@ TEXT;
             $this->enqueueMessage(
                 sprintf(
                     '[%d] %s %s:%d Trace: %s Previous: %s',
-                    $e->getCode,
+                    $e->getCode(),
                     $e->getMessage(),
                     $e->getFile(),
                     $e->getLine(),
@@ -354,7 +345,7 @@ TEXT;
     /**
      * @return bool
      */
-    private function isSupported()
+    private function isSupported(): bool
     {
         return ComponentHelper::isInstalled('com_chococsv') && ComponentHelper::isEnabled('com_chococsv');
     }
@@ -495,7 +486,7 @@ TEXT;
             RecursiveIteratorIterator::CATCH_GET_CHILD
         );
         foreach ($iterator as $key => $value) {
-            if (strpos($value, '{') === 0) {
+            if (str_starts_with($value, '{')) {
                 if ($isSilent == 2) {
                     $this->enqueueMessage(
                         sprintf(
@@ -561,7 +552,8 @@ TEXT;
         array $lineRange = [],
         array &$failed = [],
         array &$successful = []
-    ) {
+    ): void
+    {
         if (empty($url)) {
             throw new RuntimeException('Url MUST NOT be empty', 422);
         }
@@ -747,7 +739,7 @@ TEXT;
      * @return void
      * @throws JsonException
      */
-    private function processEachCsvLineData(array $dataValue)
+    private function processEachCsvLineData(array $dataValue): void
     {
         if (empty($dataValue)) {
             return;
@@ -812,7 +804,7 @@ TEXT;
                     // Retry
                     $this->processEachCsvLineData(['line' => $dataCurrentCSVline, 'content' => $decodedDataString]);
                 }
-            } elseif (isset($decodedJsonOutput->data) && isset($decodedJsonOutput->data->attributes) && !isset($successfulCsvLines[$dataCurrentCSVline])) {
+            } elseif (isset($decodedJsonOutput->data->attributes) && !isset($successfulCsvLines[$dataCurrentCSVline])) {
                 if ($this->silent == 1) {
                     $successfulCsvLines[$dataCurrentCSVline] = sprintf(
                         "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
@@ -861,7 +853,8 @@ TEXT;
         string $dataString,
         array $headers,
         int $timeout = 3
-    ) {
+    ): string
+    {
         $uri      = (new Uri($endpoint));
         $response = $this->getHttpClient()->request(
             $givenHttpVerb,
@@ -893,7 +886,7 @@ TEXT;
      * @return void
      * @throws Exception
      */
-    private function deployScript()
+    private function deployScript(): void
     {
         try {
             $this->csvReader(
@@ -914,8 +907,7 @@ TEXT;
                         $domainException->getLine(),
                         ANSI_COLOR_NORMAL,
                         CUSTOM_LINE_END
-                    ),
-                    'message'
+                    )
                 );
             }
         } catch (Throwable $fallbackCatchAllUncaughtException) {
@@ -942,7 +934,7 @@ TEXT;
                 if (!empty($this->failedCsvLines)) {
                     $errors = ['errors' => $this->failedCsvLines];
                     if ($this->saveReportToFile === 2) {
-                        File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode($errors),);
+                        File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode($errors));
                     }
                 }
                 if (($this->saveReportToFile === 1) && !empty($this->successfulCsvLines)) {
