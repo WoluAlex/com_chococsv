@@ -22,7 +22,7 @@ use function strtolower;
 
 defined('_JEXEC') || die;
 
-final class Dispatcher extends AlexApi\Component\Chococsv\Administrator\Dispatcher
+final class Dispatcher extends \AlexApi\Component\Chococsv\Administrator\Dispatcher\Dispatcher
 {
     public function dispatch()
     {
