@@ -750,8 +750,8 @@ TEXT;
      */
     private function processEachCsvLineData(array $dataValue): void
     {
-        if (empty($dataValue)) {
-            return;
+        if (empty($dataValue) || !is_int($dataValue['line'] ?? false) || !isset($dataValue['content'])) {
+            throw new InvalidArgumentException('Empty data. Cannot continue', 422);
         }
 
         $dataCurrentCSVline = $dataValue['line'];
@@ -766,9 +766,9 @@ TEXT;
 
 
         try {
-            if (($decodedDataString === false) || (!isset($token[$decodedDataString->tokenindex]))
+            if (($decodedDataString === false) || (!isset($this->token[$decodedDataString->tokenindex]))
             ) {
-                return;
+                throw new InvalidArgumentException('Empty data. Cannot continue', 422);
             }
 
             // HTTP request headers
@@ -776,7 +776,7 @@ TEXT;
                 'Accept: application/vnd.api+json',
                 'Content-Type: application/json',
                 'Content-Length: ' . strlen($dataString),
-                sprintf('X-Joomla-Token: %s', trim($token[$decodedDataString->tokenindex])),
+                sprintf('X-Joomla-Token: %s', trim($this->token[$decodedDataString->tokenindex])),
             ];
 
             // Article primary key. Usually 'id'
@@ -813,9 +813,9 @@ TEXT;
                     // Retry
                     $this->processEachCsvLineData(['line' => $dataCurrentCSVline, 'content' => $decodedDataString]);
                 }
-            } elseif (isset($decodedJsonOutput->data->attributes) && !isset($successfulCsvLines[$dataCurrentCSVline])) {
+            } elseif (isset($decodedJsonOutput->data->attributes) && !isset($this->successfulCsvLines[$dataCurrentCSVline])) {
                 if ($this->silent == 1) {
-                    $successfulCsvLines[$dataCurrentCSVline] = sprintf(
+                    $this->successfulCsvLines[$dataCurrentCSVline] = sprintf(
                         "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
                         ANSI_COLOR_GREEN,
                         $decodedDataString->tokenindex,
@@ -828,12 +828,12 @@ TEXT;
                         CUSTOM_LINE_END
                     );
 
-                    $this->enqueueMessage($successfulCsvLines[$dataCurrentCSVline]);
+                    $this->enqueueMessage($this->successfulCsvLines[$dataCurrentCSVline]);
                 }
             }
         } catch (Throwable $e) {
             if ($this->silent == 1) {
-                $failedCsvLines[$dataCurrentCSVline] = sprintf(
+                $this->failedCsvLines[$dataCurrentCSVline] = sprintf(
                     "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
                     ANSI_COLOR_RED,
                     $e->getMessage(),
@@ -842,7 +842,7 @@ TEXT;
                     ANSI_COLOR_NORMAL,
                     CUSTOM_LINE_END
                 );
-                $this->enqueueMessage($failedCsvLines[$dataCurrentCSVline], 'error');
+                $this->enqueueMessage($this->failedCsvLines[$dataCurrentCSVline], 'error');
             }
         }
     }
