@@ -13,6 +13,7 @@ namespace AlexApi\Component\Chococsv\Administrator\Command;
 use AlexApi\Component\Chococsv\Administrator\Behaviour\WebserviceToolboxBehaviour;
 use DomainException;
 use Exception;
+use InvalidArgumentException;
 use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
@@ -66,6 +67,7 @@ use function sprintf;
 use function str_contains;
 use function str_getcsv;
 use function str_replace;
+use function str_starts_with;
 use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
@@ -232,21 +234,28 @@ TEXT;
             Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
         );
 
-
 // Wether or not to show ASCII banner true to show , false otherwise. Default is to show the ASCII art banner
-        $showAsciiBanner = (bool)$this->getParams()->get('show_ascii_banner', 0);
+        $showAsciiBanner = (bool)$this->getParams()->get('params.show_ascii_banner', 0);
 
 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
-        $isLocal = (bool)$this->getParams()->get('is_local', 1);
+        $isLocal = (bool)$this->getParams()->get('params.is_local', 1);
 
 // IF THIS URL DOES NOT EXIST IT WILL CRASH THE SCRIPT. CHANGE THIS TO YOUR OWN URL
         // For example: https://example.org/sample-data.csv';
-        $this->csvUrl = PunycodeHelper::urlToUTF8((string)$this->getParams()->get('remote_file', ''));
+        $this->csvUrl = PunycodeHelper::urlToUTF8((string)$this->getParams()->get('params.remote_file', ''));
         if ($isLocal) {
-            $localCsvFile = Path::clean($this->getParams()->get('local_file', ''));
+            $localCsvFileFromParams = $this->getParams()->get('params.local_file', '');
+            if (empty($localCsvFileFromParams)) {
+                throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
+            }
+            $localCsvFile = Path::clean(sprintf('%s/media/com_chococsv/data/%s', JPATH_ROOT, $localCsvFileFromParams));
             if (is_readable($localCsvFile)) {
                 $this->csvUrl = $localCsvFile;
             }
+        }
+
+        if (empty($this->csvUrl)) {
+            throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
         }
 
 // Silent mode
@@ -254,17 +263,17 @@ TEXT;
 // 1: show response result only
 // 2: show key value pairs only
 // Set to 0 if you want to squeeze out performance of this script to the maximum
-        $this->silent = (int)$this->getParams()->get('silent_mode', 0);
+        $this->silent = (int)$this->getParams()->get('params.silent_mode', 0);
 
 // Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
-        $whatLineNumbersYouWant = $this->getParams()->get('what_line_numbers_you_want', '');
+        $whatLineNumbersYouWant = $this->getParams()->get('params.what_line_numbers_you_want', '');
 
 // Do you want a report after processing?
 // 0: no report, 1: success & errors, 2: errors only
 // When using report feature. Silent mode MUST be set to 1. Otherwise you might have unexpected results.
 // Set to 0 if you want to squeeze out performance of this script to the maximum
 // If enabled, this will create a output.json file
-        $this->saveReportToFile = (int)$this->getParams()->get('save_report_to_file', 0);
+        $this->saveReportToFile = (int)$this->getParams()->get('params.save_report_to_file', 0);
 
 // Show the ASCII Art banner or not
         $enviromentAwareDisplay = (IS_CLI ? self::ASCII_BANNER : sprintf('<pre>%s</pre>', self::ASCII_BANNER));
@@ -288,7 +297,7 @@ TEXT;
 
 
         try {
-            $destinations = $this->getParams()->get('destinations', []);
+            $destinations = $this->getParams()->get('params.destinations', []);
 
             if (empty($destinations)) {
                 throw new DomainException(
@@ -555,7 +564,7 @@ TEXT;
     ): void
     {
         if (empty($url)) {
-            throw new RuntimeException('Url MUST NOT be empty', 422);
+            throw new InvalidArgumentException('Url MUST NOT be empty', 400);
         }
 
         $defaultKeys = [
