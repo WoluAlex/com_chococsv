@@ -216,8 +216,6 @@ TEXT;
      */
     public function deploy()
     {
-        ini_set('auto_detect_line_endings', true);
-
         ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
         ini_set('error_log', '');
         ini_set('log_errors', 1);
@@ -338,14 +336,18 @@ TEXT;
         } catch (Throwable $e) {
             $this->enqueueMessage(
                 sprintf(
-                    '%s%d%s%s',
+                    '[%d] %s %s:%d Trace: %s Previous: %s',
+                    $e->getCode,
                     $e->getMessage(),
+                    $e->getFile(),
                     $e->getLine(),
                     $e->getTraceAsString(),
                     $e->getPrevious() ? $e->getPrevious()->getTraceAsString() : ''
                 ),
                 'error'
             );
+            // Rethrow exception to make the command fail as it should on failure
+            throw $e;
         }
     }
 
