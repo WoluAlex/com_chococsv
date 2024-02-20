@@ -321,7 +321,7 @@ TEXT;
                 $this->baseUrl[$destination->ref->tokenindex] = $destination->ref->base_url;
 
                 // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-                $this->token[$destination->ref->tokenindex]    = $destination->ref->api_authtoken;
+                $this->token[$destination->ref->tokenindex] = $destination->ref->auth_apikey;
                 $this->basePath[$destination->ref->tokenindex] = $destination->ref->base_path;
 
                 // Other Joomla articles fields
