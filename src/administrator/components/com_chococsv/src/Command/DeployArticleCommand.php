@@ -136,7 +136,7 @@ TEXT;
     /**
      * @var string
      */
-    private string $csvUrl = '';
+    private array $csvUrl = [];
     /**
      * @var array
      */
@@ -158,7 +158,7 @@ TEXT;
     /**
      * @var bool
      */
-    private bool $isDone = false;
+    private array $isDone = [];
 
     /**
      * @var array
@@ -167,7 +167,7 @@ TEXT;
     /**
      * @var bool
      */
-    private bool $isExpanded = false;
+    private array $isExpanded = [];
     /**
      * @var int
      */
@@ -275,11 +275,6 @@ TEXT;
                 ) : ''
             );
 
-            $this->failedCsvLines     = [];
-            $this->successfulCsvLines = [];
-            $this->isDone             = false;
-
-
             $computedDestinations         = new Registry($destinations);
             $computedDestinationsToObject = $computedDestinations->toObject();
 
@@ -293,12 +288,19 @@ TEXT;
                 }
                 $this->tokenindex = $destination->ref->tokenindex;
 
+                $this->failedCsvLines[$this->tokenindex] = [];
+                $this->successfulCsvLines[$this->tokenindex] = [];
+                $this->isDone[$this->tokenindex] = false;
+
+
                 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
                 $isLocal = (bool)$destination->ref->is_local;
 
 // IF THIS URL DOES NOT EXIST IT WILL CRASH THE SCRIPT. CHANGE THIS TO YOUR OWN URL
                 // For example: https://example.org/sample-data.csv';
-                $this->csvUrl = PunycodeHelper::urlToUTF8((string)$destination->ref->remote_file ?? '');
+                $this->csvUrl[$this->tokenindex] = PunycodeHelper::urlToUTF8(
+                    (string)$destination->ref->remote_file ?? ''
+                );
                 if ($isLocal) {
                     $localCsvFileFromParams = $destination->ref->local_file ?? '';
                     if (empty($localCsvFileFromParams)) {
@@ -308,11 +310,11 @@ TEXT;
                         sprintf('%s/media/com_chococsv/data/%s', JPATH_ROOT, $localCsvFileFromParams)
                     );
                     if (is_readable($localCsvFile)) {
-                        $this->csvUrl = $localCsvFile;
+                        $this->csvUrl[$this->tokenindex] = $localCsvFile;
                     }
                 }
 
-                if (empty($this->csvUrl)) {
+                if (empty($this->csvUrl[$this->tokenindex])) {
                     throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
                 }
 
@@ -321,8 +323,8 @@ TEXT;
                 $whatLineNumbersYouWant = $this->getParams()->get('params.what_line_numbers_you_want', '');
 
 
-                $this->expandedLineNumbers = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
-                $this->isExpanded          = ($this->expandedLineNumbers !== []);
+                $this->expandedLineNumbers[$this->tokenindex] = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
+                $this->isExpanded[$this->tokenindex]          = ($this->expandedLineNumbers[$this->tokenindex] !== []);
 
 
                 // Your Joomla! website base url
@@ -342,12 +344,12 @@ TEXT;
 
                 try {
                     $this->csvReader(
-                        $this->csvUrl,
+                        $this->csvUrl[$this->tokenindex],
                         $this->silent,
-                        $this->expandedLineNumbers,
-                        $this->failedCsvLines,
-                        $this->successfulCsvLines,
-                        $this->isDone
+                        $this->expandedLineNumbers[$this->tokenindex],
+                        $this->failedCsvLines[$this->tokenindex],
+                        $this->successfulCsvLines[$this->tokenindex],
+                        $this->isDone[$this->tokenindex]
                     );
                 } catch (DomainException $domainException) {
                     if ($this->silent == 1) {
@@ -375,21 +377,21 @@ TEXT;
                         'error'
                     );
                 } finally {
-                    $this->isDone = true;
+                    $this->isDone[$this->tokenindex] = true;
 
                     if (in_array($this->saveReportToFile, [1, 2], true)) {
                         $errors = [];
                         if (!file_exists(CSV_PROCESSING_REPORT_FILEPATH)) {
                             File::write(CSV_PROCESSING_REPORT_FILEPATH, '');
                         }
-                        if (!empty($this->failedCsvLines)) {
-                            $errors = ['errors' => $this->failedCsvLines];
+                        if (!empty($this->failedCsvLines[$this->tokenindex])) {
+                            $errors = ['errors' => $this->failedCsvLines[$this->tokenindex]];
                             if ($this->saveReportToFile === 2) {
                                 File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode($errors));
                             }
                         }
-                        if (($this->saveReportToFile === 1) && !empty($this->successfulCsvLines)) {
-                            $success = ['success' => $this->successfulCsvLines];
+                        if (($this->saveReportToFile === 1) && !empty($this->successfulCsvLines[$this->tokenindex])) {
+                            $success = ['success' => $this->successfulCsvLines[$this->tokenindex]];
                             File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode(array_merge($errors, $success)));
                         }
                     }
@@ -701,7 +703,7 @@ TEXT;
                 }
             }
 
-            while (!$this->isDone && !feof($resource)) {
+            while (!$this->isDone[$this->tokenindex] && !feof($resource)) {
                 $currentLine = stream_get_line(
                     $resource,
                     0,
@@ -746,7 +748,7 @@ TEXT;
 
                     // Stop processing immediately if it goes beyond range
                     if (($isExpanded && count($lineRange) > 1) && ($currentCsvLineNumber > $maxLineNumber)) {
-                        $this->isDone = true;
+                        $this->isDone[$this->tokenindex] = true;
                         throw new DomainException(
                             sprintf(
                                 'Processing of CSV file done. Last line processed was line %d',
@@ -757,7 +759,9 @@ TEXT;
 
                     if ($encodedContent === false) {
                         throw new RuntimeException('Current line seem to be invalid', 422);
-                    } elseif (!$this->isDone && ((is_string($encodedContent) && (($isExpanded && in_array(
+                    } elseif (!$this->isDone[$this->tokenindex] && ((is_string(
+                                $encodedContent
+                            ) && (($isExpanded && in_array(
                                         $currentCsvLineNumber,
                                         $lineRange,
                                         true
@@ -768,7 +772,7 @@ TEXT;
                         if ($isExpanded && (count(
                                     $lineRange
                                 ) === 1 && ($currentCsvLineNumber === $maxLineNumber))) {
-                            $this->isDone = true;
+                            $this->isDone[$this->tokenindex] = true;
                             throw new DomainException(
                                 sprintf(
                                     'Processing of CSV file done. Last line processed was line %d',
