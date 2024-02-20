@@ -50,7 +50,7 @@
                    type="subform"
                    label="COM_CHOCOCSV_DESTINATIONS_LABEL"
                    description="COM_CHOCOCSV_DESTINATIONS_DESCRIPTION"
-                   formsource="/administrator/components/com_chococsv/forms/tokenindex.xml"
+                   formsource="/administrator/components/com_chococsv/forms/destination.xml"
                    multiple="true"
                    min="1"
                    groupByFieldset="true"

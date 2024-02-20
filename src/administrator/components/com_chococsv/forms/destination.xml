@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<form name="tokenindex">
-    <fieldset name="tokenindex">
-        <fields name="tokenindex">
+<form name="destination">
+	<fieldset name="destination">
+		<fields name="ref">
 			<field name="tokenindex"
 				   type="text"
 				   label="COM_CHOCOCSV_TOKEN_INDEX_LABEL"
