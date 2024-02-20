@@ -910,10 +910,9 @@ TEXT;
             if ($this->silent == 1) {
                 $this->enqueueMessage(
                     sprintf(
-                        '%s Error message: %s, Error code line: %d%s%s',
-                        ANSI_COLOR_NORMAL,
+                        '%s%s%s%s',
+                        ANSI_COLOR_GREEN,
                         $domainException->getMessage(),
-                        $domainException->getLine(),
                         ANSI_COLOR_NORMAL,
                         CUSTOM_LINE_END
                     )
