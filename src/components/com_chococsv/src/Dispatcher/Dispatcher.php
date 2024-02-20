@@ -14,24 +14,16 @@ declare(strict_types=1);
 
 namespace AlexApi\Component\Chococsv\Site\Dispatcher;
 
-use Joomla\CMS\Dispatcher\ComponentDispatcher;
 use Joomla\CMS\Log\Log;
 use Throwable;
 
+use function sprintf;
 use function strtolower;
 
 defined('_JEXEC') || die;
 
-final class Dispatcher extends ComponentDispatcher
+final class Dispatcher extends AlexApi\Component\Chococsv\Administrator\Dispatcher
 {
-    protected function loadLanguage()
-    {
-        $this->app->getLanguage()->load($this->option, JPATH_BASE) || $this->app->getLanguage()->load(
-            $this->option,
-            sprintf('%s/components/%s', JPATH_ADMINISTRATOR, $this->option)
-        );
-    }
-
     public function dispatch()
     {
         try {
@@ -50,5 +42,4 @@ final class Dispatcher extends ComponentDispatcher
             );
         }
     }
-
 }
