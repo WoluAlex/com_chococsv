@@ -459,7 +459,14 @@ TEXT;
         $app = Factory::getApplication();
         if ($app instanceof ConsoleApplication) {
             $outputFormatter = new SymfonyStyle($app->getConsoleInput(), $app->getConsoleOutput());
-            $outputFormatter->$type($message) || $outputFormatter->text($message);
+            if ($type === 'message') {
+                $type = 'success';
+            }
+            try {
+                $outputFormatter->$type($message);
+            } catch (Throwable) {
+                $outputFormatter->text($message);
+            }
         } elseif ($app instanceof CMSApplication) {
             $outputFormatter = [$app, 'enqueueMessage'];
             $outputFormatter($message, $type) || $outputFormatter($message, 'message');
