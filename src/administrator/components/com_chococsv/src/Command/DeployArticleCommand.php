@@ -244,32 +244,6 @@ TEXT;
 // Set to 0 if you want to squeeze out performance of this script to the maximum
         $this->silent = (int)$this->getParams()->get('params.silent_mode', 0);
 
-        // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
-        $isLocal = (bool)$this->getParams()->get('params.is_local', 1);
-
-// IF THIS URL DOES NOT EXIST IT WILL CRASH THE SCRIPT. CHANGE THIS TO YOUR OWN URL
-        // For example: https://example.org/sample-data.csv';
-        $this->csvUrl = PunycodeHelper::urlToUTF8((string)$this->getParams()->get('params.remote_file', ''));
-        if ($isLocal) {
-            $localCsvFileFromParams = $this->getParams()->get('params.local_file', '');
-            if (empty($localCsvFileFromParams)) {
-                throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
-            }
-            $localCsvFile = Path::clean(
-                sprintf('%s/media/com_chococsv/data/%s', JPATH_ROOT, $localCsvFileFromParams)
-            );
-            if (is_readable($localCsvFile)) {
-                $this->csvUrl = $localCsvFile;
-            }
-        }
-
-        if (empty($this->csvUrl)) {
-            throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
-        }
-
-
-// Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
-        $whatLineNumbersYouWant = $this->getParams()->get('params.what_line_numbers_you_want', '');
 
 // Do you want a report after processing?
 // 0: no report, 1: success & errors, 2: errors only
@@ -305,17 +279,51 @@ TEXT;
             $this->successfulCsvLines = [];
             $this->isDone             = false;
 
-            $this->expandedLineNumbers = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
-            $this->isExpanded          = ($this->expandedLineNumbers !== []);
 
             $computedDestinations         = new Registry($destinations);
             $computedDestinationsToObject = $computedDestinations->toObject();
 
             foreach ($computedDestinationsToObject as $destination) {
+                if (!$destination->ref->is_active) {
+                    continue;
+                }
+
                 if (empty($destination->ref->tokenindex)) {
                     continue;
                 }
                 $this->tokenindex = $destination->ref->tokenindex;
+
+                // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
+                $isLocal = (bool)$destination->ref->is_local;
+
+// IF THIS URL DOES NOT EXIST IT WILL CRASH THE SCRIPT. CHANGE THIS TO YOUR OWN URL
+                // For example: https://example.org/sample-data.csv';
+                $this->csvUrl = PunycodeHelper::urlToUTF8((string)$destination->ref->remote_file ?? '');
+                if ($isLocal) {
+                    $localCsvFileFromParams = $destination->ref->local_file ?? '';
+                    if (empty($localCsvFileFromParams)) {
+                        throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
+                    }
+                    $localCsvFile = Path::clean(
+                        sprintf('%s/media/com_chococsv/data/%s', JPATH_ROOT, $localCsvFileFromParams)
+                    );
+                    if (is_readable($localCsvFile)) {
+                        $this->csvUrl = $localCsvFile;
+                    }
+                }
+
+                if (empty($this->csvUrl)) {
+                    throw new InvalidArgumentException('CSV Url MUST NOT be empty', 400);
+                }
+
+
+// Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
+                $whatLineNumbersYouWant = $this->getParams()->get('params.what_line_numbers_you_want', '');
+
+
+                $this->expandedLineNumbers = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
+                $this->isExpanded          = ($this->expandedLineNumbers !== []);
+
 
                 // Your Joomla! website base url
                 $this->baseUrl[$destination->ref->tokenindex] = $destination->ref->base_url;
