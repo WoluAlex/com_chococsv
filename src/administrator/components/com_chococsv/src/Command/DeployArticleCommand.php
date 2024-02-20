@@ -951,12 +951,8 @@ TEXT;
      */
     private function endpoint(string $givenBaseUrl, string $givenBasePath, int $givenResourceId = 0): string
     {
-        return $givenResourceId ? sprintf(
-            '%s/%s/%s/%d',
-            $givenBaseUrl,
-            $givenBasePath,
-            'content/articles',
-            $givenResourceId
-        ) : sprintf('%s/%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
+        return $givenResourceId ?
+            sprintf('%s%s/%s/%d', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId)
+            : sprintf('%s%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
     }
 }
