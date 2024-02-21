@@ -328,19 +328,19 @@ TEXT;
 
 
                 // Your Joomla! website base url
-                $this->baseUrl[$destination->ref->tokenindex] = $destination->ref->base_url;
+                $this->baseUrl[$destination->ref->tokenindex] = $destination->ref->base_url ?? '';
 
                 // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-                $this->token[$destination->ref->tokenindex] = $destination->ref->auth_apikey;
-                $this->basePath[$destination->ref->tokenindex] = $destination->ref->base_path;
+                $this->token[$destination->ref->tokenindex]    = $destination->ref->auth_apikey ?? '';
+                $this->basePath[$destination->ref->tokenindex] = $destination->ref->base_path ?? '/api/index.php/v1';
 
                 // Other Joomla articles fields
-                $this->extraDefaultFieldKeys[$destination->ref->tokenindex] = $destination->ref->extra_default_fields;
+                $this->extraDefaultFieldKeys[$destination->ref->tokenindex] = $destination->ref->extra_default_fields ?? [];
 
 // Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
 // The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
 // For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
-                $this->customFieldKeys[$destination->ref->tokenindex] = $destination->ref->custom_fields;
+                $this->customFieldKeys[$destination->ref->tokenindex] = $destination->ref->custom_fields ?? [];
 
                 try {
                     $this->csvReader(
