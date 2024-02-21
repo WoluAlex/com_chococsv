@@ -68,7 +68,6 @@ use function sprintf;
 use function str_contains;
 use function str_getcsv;
 use function str_replace;
-use function str_starts_with;
 use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
@@ -231,6 +230,7 @@ TEXT;
         ini_set('error_log', '');
         ini_set('log_errors', 1);
         ini_set('log_errors_max_len', 4096);
+        ini_set('auto_detect_line_endings', 1);
 
         defined('IS_CLI') || define('IS_CLI', PHP_SAPI == 'cli');
         defined('CUSTOM_LINE_END') || define('CUSTOM_LINE_END', IS_CLI ? PHP_EOL : '<br>');
@@ -587,7 +587,7 @@ TEXT;
             RecursiveIteratorIterator::CATCH_GET_CHILD
         );
         foreach ($iterator as $key => $value) {
-            if (str_starts_with($value, '{')) {
+            if (strpos($value, '{') === 0) {
                 if ($this->silent == 2) {
                     $this->enqueueMessage(
                         sprintf(
@@ -948,7 +948,7 @@ TEXT;
             throw new UnexpectedValueException('Invalid response received after Http request. Cannot continue', 422);
         }
 
-        return (string)$response->getBody();
+        return $response->body;
     }
 
     /**
