@@ -248,13 +248,12 @@ TEXT;
             Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
         );
     }
+
     /**
      * @return void
      */
     public function deploy(): void
     {
-
-
 // Wether or not to show ASCII banner true to show , false otherwise. Default is to show the ASCII art banner
         $showAsciiBanner = (bool)$this->getParams()->get('params.show_ascii_banner', 0);
 
@@ -944,6 +943,10 @@ TEXT;
      */
     private function endpoint(string $givenBaseUrl, string $givenBasePath, int $givenResourceId = 0): string
     {
+        if (empty($givenBaseUrl) || empty($givenBasePath)) {
+            throw new InvalidArgumentException('Base url and base path MUST not be empty', 400);
+        }
+
         return $givenResourceId ?
             sprintf('%s%s/%s/%d', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId)
             : sprintf('%s%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
