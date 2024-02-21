@@ -11,8 +11,10 @@ namespace AlexApi\Component\Chococsv\Administrator\Controller;
 
 use Joomla\CMS\MVC\Controller\BaseController;
 
+use function defined;
+
 // phpcs:disable PSR1.Files.SideEffects
-\defined('_JEXEC') or die;
+defined('_JEXEC') or die;
 
 // phpcs:enable PSR1.Files.SideEffects
 

@@ -14,13 +14,14 @@ use Joomla\CMS\Dispatcher\ComponentDispatcher;
 use Joomla\CMS\Log\Log;
 use Throwable;
 
+use function defined;
 use function sprintf;
 use function strtolower;
 
 use const JPATH_BASE;
 
 // phpcs:disable PSR1.Files.SideEffects
-\defined('_JEXEC') or die;
+defined('_JEXEC') or die;
 
 // phpcs:enable PSR1.Files.SideEffects
 

@@ -8,7 +8,6 @@
                    description="COM_CHOCOCSV_TOKEN_INDEX_DESCRIPTION"
                    pattern="^[a-zA-Z]{1,20}\-?[a-zA-Z0-9]{1,19}$"
                    hint="Ex: app-001,web42,Site123,APP,WEB123,SITE-123"
-                   default=""
                    size="50"
                    maxlength="40"
                    required="true"
@@ -101,14 +100,15 @@
             <field
                     name="extra_default_fields"
                     type="list"
-                    default=""
                     label="COM_CHOCOCSV_EXTRA_DEFAULT_FIELDS_LABEL"
                     description="COM_CHOCOCSV_EXTRA_DEFAULT_FIELDS_DESCRIPTION"
                     hint="publish_up,publish_down,featured,featured_up,featured_down,images,urls"
                     multiple="true"
                     required="false"
                     class="fancyselect"
+                    default=""
             >
+                <option value="">COM_CHOCOCSV_CHOOSE_AN_OPTION_LABEL</option>
                 <option value="publish_up">publish_up</option>
                 <option value="publish_down">publish_down</option>
                 <option value="featured">featured</option>
@@ -120,16 +120,16 @@
             <field
                     name="custom_fields"
                     type="sql"
-                    default=""
                     label="COM_CHOCOCSV_CHOOSE_CUSTOM_FIELDS_LABEL"
                     description="COM_CHOCOCSV_CHOOSE_CUSTOM_FIELDS_DESCRIPTION"
-                    query="SELECT f.name, f.title FROM #__fields AS f WHERE f.context = 'com_content.article' AND f.state = 1"
+                    query="SELECT f.name, CONCAT(f.title,' (',f.name,')') AS f_title FROM #__fields AS f WHERE f.context = 'com_content.article' AND f.state = 1"
                     key_field="name"
-                    value_field="title"
+                    value_field="f_title"
                     multiple="true"
                     required="false"
                     header="COM_CHOCOCSV_CHOOSE_AN_OPTION_LABEL"
                     class="fancyselect"
+                    default=""
             />
         </fields>
     </fieldset>
