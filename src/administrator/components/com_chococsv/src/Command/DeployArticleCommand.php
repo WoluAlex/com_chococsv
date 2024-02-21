@@ -121,6 +121,22 @@ TEXT;
      */
     private const REQUEST_TIMEOUT = 3;
 
+    private const DEFAULT_ARTICLE_KEYS = [
+        'id',
+        'access',
+        'title',
+        'alias',
+        'catid',
+        'articletext',
+        'introtext',
+        'fulltext',
+        'language',
+        'metadesc',
+        'metakey',
+        'state',
+        'tokenindex',
+    ];
+
     /**
      * @var TransportInterface|null
      */
@@ -344,12 +360,14 @@ TEXT;
                 $this->basePath[$this->tokenindex] = $destination->ref->base_path ?? '/api/index.php/v1';
 
                 // Other Joomla articles fields
-                $this->extraDefaultFieldKeys[$this->tokenindex] = $destination->ref->extra_default_fields ?? [];
+                $this->extraDefaultFieldKeys[$this->tokenindex] = array_filter(
+                    $destination->ref->extra_default_fields ?? []
+                );
 
 // Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
 // The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
 // For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
-                $this->customFieldKeys[$this->tokenindex] = $destination->ref->custom_fields ?? [];
+                $this->customFieldKeys[$this->tokenindex] = array_filter($destination->ref->custom_fields ?? []);
 
                 try {
                     $this->csvReader();
@@ -627,25 +645,9 @@ TEXT;
             throw new InvalidArgumentException('Url MUST NOT be empty', 400);
         }
 
-        $defaultKeys = [
-            'id',
-            'access',
-            'title',
-            'alias',
-            'catid',
-            'articletext',
-            'introtext',
-            'fulltext',
-            'language',
-            'metadesc',
-            'metakey',
-            'state',
-            'tokenindex',
-        ];
-
         $mergedKeys = array_unique(
             array_merge(
-                $defaultKeys,
+                self::DEFAULT_ARTICLE_KEYS,
                 $this->extraDefaultFieldKeys[$this->tokenindex],
                 $this->customFieldKeys[$this->tokenindex]
             )
