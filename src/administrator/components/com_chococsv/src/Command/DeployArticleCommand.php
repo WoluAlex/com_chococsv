@@ -18,11 +18,9 @@ use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
-use Joomla\CMS\Language\LanguageFactoryInterface;
 use Joomla\CMS\Log\Log;
 use Joomla\CMS\String\PunycodeHelper;
 use Joomla\CMS\Uri\Uri;
-use Joomla\DI\Container;
 use Joomla\Filesystem\File;
 use Joomla\Filesystem\Path;
 use Joomla\Http\TransportInterface;
@@ -99,7 +97,7 @@ use const SORT_NATURAL;
 /**
  *
  */
-final class DeployArticleCommand implements DeployContentInterface
+final class DeployArticleCommand implements DeployContentInterface, TestableDeployContentInterface
 {
     use WebserviceToolboxBehaviour;
 
@@ -454,21 +452,6 @@ TEXT;
         return ComponentHelper::getParams('com_chococsv', true);
     }
 
-    /**
-     * @param   Container|null  $givenContainer
-     *
-     * @return Language
-     */
-    private function getComputedLanguage(Container|null $givenContainer = null): Language
-    {
-        $container = $givenContainer ?? Factory::getContainer();
-        // Console uses the default system language
-        $config = $container->get('config');
-        $locale = $config->get('language');
-        $debug  = $config->get('debug_lang');
-
-        return $container->get(LanguageFactoryInterface::class)->createLanguage($locale, $debug);
-    }
 
     /**
      * @param   string  $message
@@ -959,5 +942,35 @@ TEXT;
         return $givenResourceId ?
             sprintf('%s%s/%s/%d', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId)
             : sprintf('%s%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
+    }
+
+    public function testChooseLinesLikeAPrinter($linesYouWant)
+    {
+        return $this->chooseLinesLikeAPrinter($linesYouWant);
+    }
+
+    public function testNestedJsonDataStructure($data)
+    {
+        return $this->nestedJsonDataStructure($data);
+    }
+
+    public function testCsvReader()
+    {
+        $this->csvReader();
+    }
+
+    public function testProcessEachCsvLineData($dataCurrentCSVline, $data)
+    {
+        $this->processEachCsvLineData($dataCurrentCSVline, $data);
+    }
+
+    public function testProcessHttpRequest($givenHttpVerb, $endpoint, $data, $headers, $timeout)
+    {
+        return $this->processHttpRequest($givenHttpVerb, $endpoint, $data, $headers, $timeout);
+    }
+
+    public function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId)
+    {
+        return $this->endpoint($givenBaseUrl, $givenBasePath);
     }
 }
