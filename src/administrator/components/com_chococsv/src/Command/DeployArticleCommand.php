@@ -19,6 +19,7 @@ use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\LanguageFactoryInterface;
+use Joomla\CMS\Log\Log;
 use Joomla\CMS\String\PunycodeHelper;
 use Joomla\CMS\Uri\Uri;
 use Joomla\DI\Container;
@@ -279,6 +280,13 @@ TEXT;
             $computedDestinationsToObject = $computedDestinations->toObject();
 
             foreach ($computedDestinationsToObject as $destination) {
+                if (defined('JDEBUG') && JDEBUG == 1) {
+                    Log::add(
+                        sprintf('%d %s', __LINE__, print_r($destination, true)),
+                        Log::DEBUG,
+                        'com_chococsv.deploy.destination'
+                    );
+                }
                 if (!$destination->ref->is_active) {
                     continue;
                 }
@@ -328,19 +336,19 @@ TEXT;
 
 
                 // Your Joomla! website base url
-                $this->baseUrl[$destination->ref->tokenindex] = $destination->ref->base_url ?? '';
+                $this->baseUrl[$this->tokenindex] = $destination->ref->base_url ?? '';
 
                 // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-                $this->token[$destination->ref->tokenindex]    = $destination->ref->auth_apikey ?? '';
-                $this->basePath[$destination->ref->tokenindex] = $destination->ref->base_path ?? '/api/index.php/v1';
+                $this->token[$this->tokenindex]    = $destination->ref->auth_apikey ?? '';
+                $this->basePath[$this->tokenindex] = $destination->ref->base_path ?? '/api/index.php/v1';
 
                 // Other Joomla articles fields
-                $this->extraDefaultFieldKeys[$destination->ref->tokenindex] = $destination->ref->extra_default_fields ?? [];
+                $this->extraDefaultFieldKeys[$this->tokenindex] = $destination->ref->extra_default_fields ?? [];
 
 // Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
 // The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
 // For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
-                $this->customFieldKeys[$destination->ref->tokenindex] = $destination->ref->custom_fields ?? [];
+                $this->customFieldKeys[$this->tokenindex] = $destination->ref->custom_fields ?? [];
 
                 try {
                     $this->csvReader(
@@ -837,8 +845,6 @@ TEXT;
 
         $dataCurrentCSVline = $dataValue['line'];
         $dataString         = $dataValue['content'];
-
-        $decodedDataString = false;
 
         if (is_object($dataString)) {
             $decodedDataString = $dataString;
