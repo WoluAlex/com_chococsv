@@ -941,15 +941,22 @@ TEXT;
     /**
      * This time we need endpoint to be a function to make it more dynamic
      */
-    private function endpoint(string $givenBaseUrl, string $givenBasePath, int $givenResourceId = 0): string
+    private function endpoint(
+        string $givenBaseUrl,
+        string $givenBasePath,
+        int|string|null $givenResourceId = null
+    ): string
     {
         if (empty($givenBaseUrl) || empty($givenBasePath)) {
             throw new InvalidArgumentException('Base url and base path MUST not be empty', 400);
         }
 
-        return $givenResourceId ?
-            sprintf('%s%s/%s/%d', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId)
-            : sprintf('%s%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
+        return (empty($givenResourceId) ? sprintf(
+            '%s%s/%s',
+            $givenBaseUrl,
+            $givenBasePath,
+            'content/articles'
+        ) : sprintf('%s%s/%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId));
     }
 
     public function testChooseLinesLikeAPrinter($linesYouWant)
