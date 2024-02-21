@@ -35,6 +35,7 @@ use RuntimeException;
 use Symfony\Component\Console\Style\StyleInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
+use UnexpectedValueException;
 
 use function array_combine;
 use function array_intersect;
@@ -57,7 +58,6 @@ use function is_resource;
 use function is_string;
 use function json_decode;
 use function json_encode;
-use function json_validate;
 use function max;
 use function min;
 use function range;
@@ -290,7 +290,7 @@ TEXT;
 
                 $this->failedCsvLines[$this->tokenindex] = [];
                 $this->successfulCsvLines[$this->tokenindex] = [];
-                $this->isDone[$this->tokenindex] = false;
+                $this->isDone[$this->tokenindex]         = false;
 
 
                 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
@@ -839,12 +839,12 @@ TEXT;
         $dataString         = $dataValue['content'];
 
         $decodedDataString = false;
-        if (json_validate($dataString)) {
-            $decodedDataString = json_decode($dataString, false, 512, JSON_THROW_ON_ERROR);
-        } elseif (is_object($dataString)) {
-            $decodedDataString = $dataString;
-        }
 
+        if (is_object($dataString)) {
+            $decodedDataString = $dataString;
+        } else {
+            $decodedDataString = json_decode($dataString, false, 512, JSON_THROW_ON_ERROR);
+        }
 
         try {
             if (($decodedDataString === false) || (!isset($this->token[$decodedDataString->tokenindex]))
@@ -863,7 +863,7 @@ TEXT;
             // Article primary key. Usually 'id'
             $pk = (int)$decodedDataString->id;
 
-            $combinedHttpResponse[$dataCurrentCSVline] = $this->processHttpRequest(
+            $currentResponse = $this->processHttpRequest(
                 $pk ? 'PATCH' : 'POST',
                 $this->endpoint(
                     $this->baseUrl[$decodedDataString->tokenindex],
@@ -875,15 +875,16 @@ TEXT;
                 self::REQUEST_TIMEOUT,
                 self::USER_AGENT
             );
-            $decodedJsonOutput                         = json_decode(
-                $combinedHttpResponse[$dataCurrentCSVline],
+
+            $decodedJsonOutput = json_decode(
+                $currentResponse,
                 false,
                 512,
                 JSON_THROW_ON_ERROR
             );
 
             // don't show errors, handle them gracefully
-            if (isset($decodedJsonOutput->errors) && !isset($storage[$dataCurrentCSVline])) {
+            if (isset($decodedJsonOutput->errors)) {
                 // If article is potentially a duplicate (already exists with same alias)
                 if (isset($decodedJsonOutput->errors[0]->code) && $decodedJsonOutput->errors[0]->code === 400) {
                     // Change the alias
@@ -954,6 +955,10 @@ TEXT;
             $timeout,
             self::USER_AGENT
         );
+
+        if (empty($response)) {
+            throw new UnexpectedValueException('Invalid response received after Http request. Cannot continue', 422);
+        }
 
         return (string)$response->getBody();
     }

@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace AlexApi\Component\Chococsv\Administrator\Behaviour;
 
+use Joomla\Http\HttpFactory;
 use Joomla\Http\Response;
-use Joomla\Http\Transport\Stream;
 use Joomla\Http\TransportInterface;
 use JsonException;
 
@@ -37,7 +37,7 @@ trait WebserviceToolboxBehaviour
      */
     private function getHttpClient(): TransportInterface
     {
-        return new Stream([]);
+        return (new HttpFactory())->getAvailableDriver();
     }
 
     /**
