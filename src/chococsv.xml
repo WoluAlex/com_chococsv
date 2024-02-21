@@ -8,7 +8,7 @@
 	<authorUrl>https://apiadept.com</authorUrl>
 	<copyright>Copyright (c) 2009 - present. https://apiadept.com. All rights reserved</copyright>
 	<license>AGPL-3.0-or-later</license>
-	<version>0.9.0</version>
+	<version>0.9.1</version>
 	<description>COM_CHOCOCSV_XML_DESCRIPTION</description>
 
 	<!-- Really important for autoloading -->

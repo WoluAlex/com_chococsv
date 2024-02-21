@@ -33,6 +33,7 @@ use JsonException;
 use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
+use stdClass;
 use Symfony\Component\Console\Style\StyleInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
@@ -351,14 +352,7 @@ TEXT;
                 $this->customFieldKeys[$this->tokenindex] = $destination->ref->custom_fields ?? [];
 
                 try {
-                    $this->csvReader(
-                        $this->csvUrl[$this->tokenindex],
-                        $this->silent,
-                        $this->expandedLineNumbers[$this->tokenindex],
-                        $this->failedCsvLines[$this->tokenindex],
-                        $this->successfulCsvLines[$this->tokenindex],
-                        $this->isDone[$this->tokenindex]
-                    );
+                    $this->csvReader();
                 } catch (DomainException $domainException) {
                     if ($this->silent == 1) {
                         $this->enqueueMessage(
@@ -563,12 +557,11 @@ TEXT;
 
     /**
      * @param   array  $arr
-     * @param   int    $isSilent
      *
      * @return array
      * @throws Exception
      */
-    private function nestedJsonDataStructure(array $arr, int $isSilent = 0): array
+    private function nestedJsonDataStructure(array $arr): array
     {
         $handleComplexValues = [];
         $iterator            = new RecursiveIteratorIterator(
@@ -577,7 +570,7 @@ TEXT;
         );
         foreach ($iterator as $key => $value) {
             if (str_starts_with($value, '{')) {
-                if ($isSilent == 2) {
+                if ($this->silent == 2) {
                     $this->enqueueMessage(
                         sprintf(
                             "%s item with key: %s with value: %s%s%s",
@@ -593,7 +586,7 @@ TEXT;
                 $handleComplexValues[$key] = json_decode(str_replace(["\n", "\r", "\t"], '', trim($value)));
             } elseif (json_decode($value) === false) {
                 $handleComplexValues[$key] = json_encode($value);
-                if ($isSilent == 2) {
+                if ($this->silent == 2) {
                     $this->enqueueMessage(
                         sprintf(
                             "%s item with key: %s with value: %s%s%s",
@@ -607,7 +600,7 @@ TEXT;
                 }
             } else {
                 $handleComplexValues[$key] = $value;
-                if ($isSilent == 2) {
+                if ($this->silent == 2) {
                     $this->enqueueMessage(
                         sprintf(
                             "%s item with key: %s with value: %s%s%s",
@@ -625,26 +618,12 @@ TEXT;
         return $handleComplexValues;
     }
 
-    /**
-     * @param   string  $url
-     * @param   int     $isSilent
-     * @param   array   $lineRange
-     * @param   array   $failed
-     * @param   array   $successful
-     *
-     * @return void
-     * @throws Throwable
-     * @throws JsonException
-     */
-    private function csvReader(
-        string $url,
-        int $isSilent = 1,
-        array $lineRange = [],
-        array &$failed = [],
-        array &$successful = []
-    ): void
+
+    private function csvReader(): void
     {
-        if (empty($url)) {
+        $lineRange = $this->expandedLineNumbers[$this->tokenindex];
+
+        if (empty($this->csvUrl[$this->tokenindex])) {
             throw new InvalidArgumentException('Url MUST NOT be empty', 400);
         }
 
@@ -675,7 +654,7 @@ TEXT;
         // Assess robustness of the code by trying random key order
         //shuffle($mergedKeys);
 
-        $resource = fopen($url, 'r');
+        $resource = fopen($this->csvUrl[$this->tokenindex], 'r');
 
         if ($resource === false) {
             throw new RuntimeException('Could not read csv file', 500);
@@ -746,7 +725,7 @@ TEXT;
                 }
 
                 // Iteration on leafs AND nodes
-                $handleComplexValues = $this->nestedJsonDataStructure($commonValues, $isSilent);
+                $handleComplexValues = $this->nestedJsonDataStructure($commonValues);
 
                 try {
                     $encodedContent = json_encode(
@@ -774,7 +753,7 @@ TEXT;
                                         $lineRange,
                                         true
                                     )) || !$isExpanded)))) {
-                        $this->processEachCsvLineData(['line' => $currentCsvLineNumber, 'content' => $encodedContent]);
+                        $this->processEachCsvLineData($currentCsvLineNumber, $encodedContent);
 
                         // Only 1 element in range. Don't do useless processing after first round.
                         if ($isExpanded && (count(
@@ -790,10 +769,11 @@ TEXT;
                         }
                     }
                 } catch (DomainException $domainException) {
-                    $successful[$currentCsvLineNumber] = $domainException->getMessage();
+                    $this->successfulCsvLines[$this->tokenindex][$currentCsvLineNumber] = $domainException->getMessage(
+                    );
                     throw $domainException;
                 } catch (Throwable $encodeContentException) {
-                    $failed[$currentCsvLineNumber] = [
+                    $this->failedCsvLines[$this->tokenindex][$currentCsvLineNumber] = [
                         'error'      => $encodeContentException->getMessage(),
                         'error_line' => $encodeContentException->getLine()
                     ]; // Store failed CSV line numbers for end report.
@@ -806,7 +786,7 @@ TEXT;
             }
             throw $domainException;
         } catch (Throwable $e) {
-            if ($isSilent == 1) {
+            if ($this->silent == 1) {
                 $this->enqueueMessage(
                     sprintf(
                         "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
@@ -837,23 +817,25 @@ TEXT;
      * @return void
      * @throws JsonException
      */
-    private function processEachCsvLineData(array $dataValue): void
+    private function processEachCsvLineData(int $dataCurrentCSVline, string|stdClass $data): void
     {
-        if (empty($dataValue) || !is_int($dataValue['line'] ?? false) || !isset($dataValue['content'])) {
+        if (empty($data)) {
             throw new InvalidArgumentException('Empty data. Cannot continue', 422);
         }
 
-        $dataCurrentCSVline = $dataValue['line'];
-        $dataString         = $dataValue['content'];
-
-        if (is_object($dataString)) {
-            $decodedDataString = $dataString;
+        if (is_object($data)) {
+            $decodedDataString = $data;
+            $encodedDataString = json_encode($data, JSON_THROW_ON_ERROR);
+        } elseif (json_validate($data)) {
+            $decodedDataString = json_decode($data, false, 512, JSON_THROW_ON_ERROR);
+            $encodedDataString = $data;
         } else {
-            $decodedDataString = json_decode($dataString, false, 512, JSON_THROW_ON_ERROR);
+            $decodedDataString = false;
+            $encodedDataString = false;
         }
 
         try {
-            if (($decodedDataString === false) || (!isset($this->token[$decodedDataString->tokenindex]))
+            if (($decodedDataString == false) || ($encodedDataString == false) || (!isset($this->token[$decodedDataString->tokenindex]))
             ) {
                 throw new InvalidArgumentException('Empty data. Cannot continue', 422);
             }
@@ -862,7 +844,6 @@ TEXT;
             $headers = [
                 'Accept: application/vnd.api+json',
                 'Content-Type: application/json',
-                'Content-Length: ' . strlen($dataString),
                 sprintf('X-Joomla-Token: %s', trim($this->token[$decodedDataString->tokenindex])),
             ];
 
@@ -876,7 +857,7 @@ TEXT;
                     $this->basePath[$decodedDataString->tokenindex],
                     $pk
                 ),
-                $dataString,
+                $encodedDataString,
                 $headers,
                 self::REQUEST_TIMEOUT,
                 self::USER_AGENT
@@ -899,7 +880,7 @@ TEXT;
                         'dash'
                     );
                     // Retry
-                    $this->processEachCsvLineData(['line' => $dataCurrentCSVline, 'content' => $decodedDataString]);
+                    $this->processEachCsvLineData($dataCurrentCSVline, $decodedDataString);
                 }
             } elseif (isset($decodedJsonOutput->data->attributes) && !isset($this->successfulCsvLines[$dataCurrentCSVline])) {
                 if ($this->silent == 1) {
@@ -936,27 +917,26 @@ TEXT;
     }
 
     /**
-     * @param   string  $givenHttpVerb
-     * @param   string  $endpoint
-     * @param   string  $dataString
-     * @param   array   $headers
-     * @param   int     $timeout
+     * @param   string             $givenHttpVerb
+     * @param   string             $endpoint
+     * @param   array|string|null  $data
+     * @param   array              $headers
+     * @param   int                $timeout
      *
      * @return string
      */
     private function processHttpRequest(
         string $givenHttpVerb,
         string $endpoint,
-        string $dataString,
+        array|string|null $data,
         array $headers,
         int $timeout = 3
-    ): string
-    {
+    ): string {
         $uri      = (new Uri($endpoint));
         $response = $this->getHttpClient()->request(
             $givenHttpVerb,
             $uri,
-            $dataString,
+            $data,
             $headers,
             $timeout,
             self::USER_AGENT
