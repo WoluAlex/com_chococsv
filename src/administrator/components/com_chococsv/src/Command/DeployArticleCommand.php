@@ -951,12 +951,12 @@ TEXT;
             throw new InvalidArgumentException('Base url and base path MUST not be empty', 400);
         }
 
-        return (empty($givenResourceId) ? sprintf(
-            '%s%s/%s',
-            $givenBaseUrl,
-            $givenBasePath,
-            'content/articles'
-        ) : sprintf('%s%s/%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles', $givenResourceId));
+        $initial = sprintf('%s%s/%s', $givenBaseUrl, $givenBasePath, 'content/articles');
+        if (empty($givenResourceId)) {
+            return $initial;
+        }
+
+        return sprintf('%s/%s', $initial, $givenResourceId);
     }
 
     public function testChooseLinesLikeAPrinter($linesYouWant)
@@ -986,6 +986,6 @@ TEXT;
 
     public function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId)
     {
-        return $this->endpoint($givenBaseUrl, $givenBasePath);
+        return $this->endpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
     }
 }
