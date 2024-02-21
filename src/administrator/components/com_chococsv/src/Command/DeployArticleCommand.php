@@ -217,12 +217,10 @@ TEXT;
         if (!$this->isSupported()) {
             throw new RuntimeException('This feature is not supported on your platform.', 501);
         }
+        $this->defineConstants();
     }
 
-    /**
-     * @return void
-     */
-    public function deploy(): void
+    public function defineConstants()
     {
         ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
         ini_set('error_log', '');
@@ -249,6 +247,13 @@ TEXT;
             'CSV_PROCESSING_REPORT_FILEPATH',
             Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
         );
+    }
+    /**
+     * @return void
+     */
+    public function deploy(): void
+    {
+
 
 // Wether or not to show ASCII banner true to show , false otherwise. Default is to show the ASCII art banner
         $showAsciiBanner = (bool)$this->getParams()->get('params.show_ascii_banner', 0);
