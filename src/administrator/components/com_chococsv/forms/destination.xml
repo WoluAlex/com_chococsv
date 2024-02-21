@@ -106,7 +106,9 @@
                     multiple="true"
                     required="false"
                     class="fancyselect"
+                    default=""
             >
+                <option value="">COM_CHOCOCSV_CHOOSE_AN_OPTION_LABEL</option>
                 <option value="publish_up">publish_up</option>
                 <option value="publish_down">publish_down</option>
                 <option value="featured">featured</option>
@@ -127,6 +129,7 @@
                     required="false"
                     header="COM_CHOCOCSV_CHOOSE_AN_OPTION_LABEL"
                     class="fancyselect"
+                    default=""
             />
         </fields>
     </fieldset>
