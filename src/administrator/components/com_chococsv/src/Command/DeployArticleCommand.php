@@ -746,9 +746,9 @@ TEXT;
 
             // HTTP request headers
             $headers = [
-                'Accept: application/vnd.api+json',
-                'Content-Type: application/json',
-                sprintf('X-Joomla-Token: %s', trim($this->token[$data['tokenindex']])),
+                'Accept'         => 'application/vnd.api+json',
+                'Content-Type'   => 'application/json',
+                'X-Joomla-Token' => trim($this->token[$data['tokenindex']]),
             ];
 
             // Article primary key. Usually 'id'
@@ -829,18 +829,18 @@ TEXT;
     }
 
     /**
-     * @param   string             $givenHttpVerb
-     * @param   string             $endpoint
-     * @param   array|string|null  $data
-     * @param   array              $headers
-     * @param   int                $timeout
+     * @param   string      $givenHttpVerb
+     * @param   string      $endpoint
+     * @param   array|null  $data
+     * @param   array       $headers
+     * @param   int         $timeout
      *
      * @return string
      */
     private function processHttpRequest(
         string $givenHttpVerb,
         string $endpoint,
-        array|string|null $data,
+        array|null $data,
         array $headers,
         int $timeout = 3
     ): string {
@@ -848,7 +848,7 @@ TEXT;
         $response = $this->getHttpClient()->request(
             $givenHttpVerb,
             $uri,
-            $data,
+            ($data ? json_encode($data) : null),
             $headers,
             $timeout,
             self::USER_AGENT

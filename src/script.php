@@ -33,7 +33,7 @@ return new class () implements ServiceProviderInterface {
                  * @var    string
                  * @since  0.1.0
                  */
-                protected $minimumPhp = '8.2.0';
+                protected $minimumPhp = '8.1.0';
 
                 /**
                  * Minimum Joomla version to check
@@ -42,6 +42,21 @@ return new class () implements ServiceProviderInterface {
                  * @since  0.1.0
                  */
                 protected $minimumJoomla = '5.0.0';
+
+                protected $deleteFolders = [
+                    '/administrator/components/com_chococsv/forms',
+                    '/administrator/components/com_chococsv/language',
+                    '/administrator/components/com_chococsv/services',
+                    '/administrator/components/com_chococsv/src',
+                    '/components/com_chococsv/src'
+                ];
+
+                protected $deleteFiles = [
+                    '/administrator/components/com_chococsv/access.xml',
+                    '/administrator/components/com_chococsv/config.xml',
+                    '/administrator/components/com_chococsv/LICENSE.txt',
+                    '/components/com_chococsv/LICENSE.txt',
+                ];
 
                 private $app;
 

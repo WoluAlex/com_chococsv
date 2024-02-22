@@ -47,7 +47,7 @@
                    required="true"
             />
             <field name="auth_apikey"
-                   type="password"
+                   type="text"
                    default=""
                    label="COM_CHOCOCSV_AUTH_API_KEY_LABEL"
                    description="COM_CHOCOCSV_AUTH_API_KEY_DESCRIPTION"
