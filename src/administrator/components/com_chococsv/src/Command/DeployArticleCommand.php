@@ -18,7 +18,6 @@ use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
-use Joomla\CMS\Log\Log;
 use Joomla\CMS\String\PunycodeHelper;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Filesystem\File;
@@ -58,7 +57,6 @@ use function json_decode;
 use function json_encode;
 use function preg_match;
 use function preg_match_all;
-use function print_r;
 use function range;
 use function sort;
 use function sprintf;
@@ -297,13 +295,6 @@ TEXT;
             $computedDestinationsToObject = $computedDestinations->toObject();
 
             foreach ($computedDestinationsToObject as $destination) {
-                if (defined('JDEBUG') && JDEBUG == 1) {
-                    Log::add(
-                        sprintf('%d %s', __LINE__, print_r($destination, true)),
-                        Log::DEBUG,
-                        'com_chococsv.deploy.destination'
-                    );
-                }
                 if (!$destination->ref->is_active) {
                     continue;
                 }
