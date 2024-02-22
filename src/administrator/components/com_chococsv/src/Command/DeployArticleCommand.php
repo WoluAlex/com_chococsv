@@ -31,13 +31,14 @@ use JsonException;
 use RecursiveArrayIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
-use stdClass;
 use Symfony\Component\Console\Style\StyleInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
 use UnexpectedValueException;
 
 use function array_combine;
+use function array_filter;
+use function array_flip;
 use function array_intersect;
 use function array_intersect_key;
 use function array_merge;
@@ -47,19 +48,17 @@ use function define;
 use function defined;
 use function explode;
 use function fclose;
-use function feof;
 use function file_exists;
 use function fopen;
 use function in_array;
 use function ini_set;
-use function is_object;
 use function is_readable;
 use function is_resource;
-use function is_string;
 use function json_decode;
 use function json_encode;
-use function max;
-use function min;
+use function preg_match;
+use function preg_match_all;
+use function print_r;
 use function range;
 use function sort;
 use function sprintf;
@@ -70,15 +69,14 @@ use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
 use function trim;
+use function var_dump;
 
 use const ANSI_COLOR_BLUE;
 use const ANSI_COLOR_GREEN;
 use const ANSI_COLOR_NORMAL;
 use const ANSI_COLOR_RED;
-use const CSV_ENCLOSURE;
-use const CSV_ESCAPE;
+use const ARRAY_FILTER_USE_KEY;
 use const CSV_PROCESSING_REPORT_FILEPATH;
-use const CSV_SEPARATOR;
 use const CSV_START;
 use const CUSTOM_LINE_END;
 use const E_ALL;
@@ -87,12 +85,40 @@ use const IS_CLI;
 use const JSON_THROW_ON_ERROR;
 use const PHP_EOL;
 use const PHP_SAPI;
+use const PREG_OFFSET_CAPTURE;
+use const PREG_PATTERN_ORDER;
 use const SORT_ASC;
 use const SORT_NATURAL;
 
 \defined('_JEXEC') or die;
 
 // phpcs:enable PSR1.Files.SideEffects
+
+ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
+ini_set('error_log', '');
+ini_set('log_errors', 1);
+ini_set('log_errors_max_len', 4096);
+ini_set('auto_detect_line_endings', 1);
+
+defined('IS_CLI') || define('IS_CLI', PHP_SAPI == 'cli');
+defined('CUSTOM_LINE_END') || define('CUSTOM_LINE_END', IS_CLI ? PHP_EOL : '<br>');
+defined('ANSI_COLOR_RED') || define('ANSI_COLOR_RED', IS_CLI ? "\033[31m" : '');
+defined('ANSI_COLOR_GREEN') || define('ANSI_COLOR_GREEN', IS_CLI ? "\033[32m" : '');
+defined('ANSI_COLOR_BLUE') || define('ANSI_COLOR_BLUE', IS_CLI ? "\033[34m" : '');
+defined('ANSI_COLOR_NORMAL') || define('ANSI_COLOR_NORMAL', IS_CLI ? "\033[0m" : '');
+
+defined('CSV_SEPARATOR') || define('CSV_SEPARATOR', "\x2C");
+defined('CSV_ENCLOSURE') || define('CSV_ENCLOSURE', "\x22");
+defined('CSV_ESCAPE') || define('CSV_ESCAPE', "\x22");
+defined('CSV_ENDING') || define('CSV_ENDING', "\x0D\x0A");
+
+//Csv starts at line number : 2
+defined('CSV_START') || define('CSV_START', 2);
+// This MUST be a json file otherwise it might fail
+defined('CSV_PROCESSING_REPORT_FILEPATH') || define(
+    'CSV_PROCESSING_REPORT_FILEPATH',
+    Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
+);
 
 /**
  *
@@ -133,6 +159,8 @@ TEXT;
         'state',
         'tokenindex',
     ];
+
+    private const MAX_RETRIES = 3;
 
     /**
      * @var TransportInterface|null
@@ -217,37 +245,8 @@ TEXT;
         if (!$this->isSupported()) {
             throw new RuntimeException('This feature is not supported on your platform.', 501);
         }
-        $this->defineConstants();
     }
 
-    public function defineConstants()
-    {
-        ini_set('error_reporting', E_ALL & ~E_DEPRECATED);
-        ini_set('error_log', '');
-        ini_set('log_errors', 1);
-        ini_set('log_errors_max_len', 4096);
-        ini_set('auto_detect_line_endings', 1);
-
-        defined('IS_CLI') || define('IS_CLI', PHP_SAPI == 'cli');
-        defined('CUSTOM_LINE_END') || define('CUSTOM_LINE_END', IS_CLI ? PHP_EOL : '<br>');
-        defined('ANSI_COLOR_RED') || define('ANSI_COLOR_RED', IS_CLI ? "\033[31m" : '');
-        defined('ANSI_COLOR_GREEN') || define('ANSI_COLOR_GREEN', IS_CLI ? "\033[32m" : '');
-        defined('ANSI_COLOR_BLUE') || define('ANSI_COLOR_BLUE', IS_CLI ? "\033[34m" : '');
-        defined('ANSI_COLOR_NORMAL') || define('ANSI_COLOR_NORMAL', IS_CLI ? "\033[0m" : '');
-
-        defined('CSV_SEPARATOR') || define('CSV_SEPARATOR', "\x2C");
-        defined('CSV_ENCLOSURE') || define('CSV_ENCLOSURE', "\x22");
-        defined('CSV_ESCAPE') || define('CSV_ESCAPE', "\x22");
-        defined('CSV_ENDING') || define('CSV_ENDING', "\x0D\x0A");
-
-//Csv starts at line number : 2
-        defined('CSV_START') || define('CSV_START', 2);
-// This MUST be a json file otherwise it might fail
-        defined('CSV_PROCESSING_REPORT_FILEPATH') || define(
-            'CSV_PROCESSING_REPORT_FILEPATH',
-            Path::clean(JPATH_ROOT . '/media/com_chococsv/report/output.json')
-        );
-    }
 
     /**
      * @return void
@@ -574,7 +573,7 @@ TEXT;
             RecursiveIteratorIterator::CATCH_GET_CHILD
         );
         foreach ($iterator as $key => $value) {
-            if (strpos($value, '{') === 0) {
+            if (preg_match('/("\{("{2}.+"{2}).+"{2}\}\}\")/Uu', $value, $complexData, PREG_OFFSET_CAPTURE) === 1) {
                 if ($this->silent == 2) {
                     $this->enqueueMessage(
                         sprintf(
@@ -587,22 +586,9 @@ TEXT;
                         )
                     );
                 }
-                // Doesn't seem to make sense at first but this one line allows to show intro/fulltext images and urla,urlb,urlc
-                $handleComplexValues[$key] = json_decode(str_replace(["\n", "\r", "\t"], '', trim($value)));
+                $handleComplexValues[$key] = json_decode(str_replace(["\n", "\r", "\t"], '', $complexData[0][0]));
             } elseif (json_decode($value) === false) {
                 $handleComplexValues[$key] = json_encode($value);
-                if ($this->silent == 2) {
-                    $this->enqueueMessage(
-                        sprintf(
-                            "%s item with key: %s with value: %s%s%s",
-                            ANSI_COLOR_BLUE,
-                            $key,
-                            $value,
-                            ANSI_COLOR_NORMAL,
-                            CUSTOM_LINE_END
-                        )
-                    );
-                }
             } else {
                 $handleComplexValues[$key] = $value;
                 if ($this->silent == 2) {
@@ -649,120 +635,74 @@ TEXT;
             throw new RuntimeException('Could not read csv file', 500);
         }
 
-        $currentCsvLineNumber = 1;
+        $currentCsvLineNumber = CSV_START;
 
         try {
             stream_set_blocking($resource, false);
 
-            $firstLine = stream_get_line(
-                $resource,
-                0,
-                "\r\n"
+            //When
+            $results = [];
+            $compute = function ($data, &$results) use (&$currentCsvLineNumber) {
+                $results[1] = str_getcsv($data, \CSV_SEPARATOR, \CSV_ENCLOSURE, \CSV_ESCAPE) ?? [];
+                if (preg_match_all(
+                        '/(.+)("\{("{2}.+"{2}).+"{2}\}\}\")((.+)\n)/Uu',
+                        $data,
+                        $complexData,
+                        PREG_PATTERN_ORDER
+                    ) >= 1) {
+                    for ($i = 0, $complexDataCount = count($complexData); $i < $complexDataCount; ++$i) {
+                        $temp = array_merge(
+                            str_getcsv($complexData[1][$i] ?? '', \CSV_SEPARATOR, \CSV_ENCLOSURE, \CSV_ESCAPE) ?: [],
+                            json_decode(str_replace(["\n", "\r", "\t"], '', $complexData[2][$i] ?? ''),
+                                false,
+                                JSON_THROW_ON_ERROR) ?: [],
+                            str_getcsv($complexData[5][$i] ?? '', \CSV_SEPARATOR, \CSV_ENCLOSURE, \CSV_ESCAPE) ?: [],
+                        );
+                        if ($temp === []) {
+                            ++$currentCsvLineNumber;
+                            continue;
+                        }
+                        $results[$currentCsvLineNumber] = $temp;
+                        ++$currentCsvLineNumber;
+                    }
+                }
+            };
+            $compute(stream_get_line($resource, 1024 * 1024), $results);
+
+            $csvHeaderKeys = $results[1];
+
+            $commonKeys = array_intersect($csvHeaderKeys, $mergedKeys);
+
+            $resultsWithoutHeader = array_filter($results, fn($k) => $k > 1, ARRAY_FILTER_USE_KEY);
+
+            $refinedResults = ($lineRange === []) ? $resultsWithoutHeader : array_intersect_key(
+                $resultsWithoutHeader,
+                array_flip($lineRange)
             );
 
-            if (!is_string($firstLine) || empty($firstLine)) {
-                throw new RuntimeException('First line MUST NOT be empty. It is the header', 422);
+
+            // Allow using csv keys in any order
+
+            $commonValues = [];
+
+            foreach ($refinedResults as $line => $refinedResult) {
+                $commonValues[$line] = array_intersect_key($refinedResult, $commonKeys);
             }
 
-            $csvHeaderKeys = str_getcsv($firstLine);
-            $commonKeys    = array_intersect($csvHeaderKeys, $mergedKeys);
-            $isExpanded    = ($lineRange !== []);
-
-            if ($isExpanded) {
-                if (count($lineRange) === 1) {
-                    $minLineNumber = $lineRange[0];
-                    $maxLineNumber = $lineRange[0];
-                } else {
-                    // Rather than starting from 1 which is not that efficient, start from minimum value in CSV line range
-                    $minLineNumber = min($lineRange);
-                    $maxLineNumber = max($lineRange);
-                }
-            }
-
-            while (!$this->isDone[$this->tokenindex] && !feof($resource)) {
-                $currentLine = stream_get_line(
-                    $resource,
-                    0,
-                    "\r\n"
-                );
-                if (!is_string($currentLine) || empty($currentLine)) {
-                    continue;
-                }
-                // Again, for a more efficient algorithm. Do not do unecessary processing, unless we have to.
-                $isEdgeCaseSingleLineInRange = ($isExpanded && (count($lineRange) === 1));
-                if (!$isExpanded || ($isExpanded && count($lineRange) > 1) || $isEdgeCaseSingleLineInRange) {
-                    $currentCsvLineNumber += 1;
-
-                    if ($isEdgeCaseSingleLineInRange && ($currentCsvLineNumber < $minLineNumber)) {
-                        continue; // Continue until we reach the line we want
-                    }
-                }
-
-                $extractedContent = str_getcsv($currentLine, CSV_SEPARATOR, CSV_ENCLOSURE, CSV_ESCAPE);
-
-                // Skip empty lines
-                if (empty($extractedContent)) {
-                    continue;
-                }
-
-                // Allow using csv keys in any order
-                $commonValues = array_intersect_key($extractedContent, $commonKeys);
-
-                // Skip invalid lines
-                if (empty($commonValues)) {
-                    continue;
-                }
-
-                // Iteration on leafs AND nodes
-                $handleComplexValues = $this->nestedJsonDataStructure($commonValues);
-
+            foreach ($commonValues as $currentCsvLineValue => $currentCommonValues) {
                 try {
-                    $encodedContent = json_encode(
-                        array_combine($commonKeys, $handleComplexValues),
-                        JSON_THROW_ON_ERROR
-                    );
+                    $combined = array_combine($commonKeys, $currentCommonValues);
 
-                    // Stop processing immediately if it goes beyond range
-                    if (($isExpanded && count($lineRange) > 1) && ($currentCsvLineNumber > $maxLineNumber)) {
-                        $this->isDone[$this->tokenindex] = true;
-                        throw new DomainException(
-                            sprintf(
-                                'Processing of CSV file done. Last line processed was line %d',
-                                $currentCsvLineNumber
-                            ), 200
-                        );
-                    }
-
-                    if ($encodedContent === false) {
+                    if ($combined == false) {
                         throw new RuntimeException('Current line seem to be invalid', 422);
-                    } elseif (!$this->isDone[$this->tokenindex] && ((is_string(
-                                $encodedContent
-                            ) && (($isExpanded && in_array(
-                                        $currentCsvLineNumber,
-                                        $lineRange,
-                                        true
-                                    )) || !$isExpanded)))) {
-                        $this->processEachCsvLineData($currentCsvLineNumber, $encodedContent);
-
-                        // Only 1 element in range. Don't do useless processing after first round.
-                        if ($isExpanded && (count(
-                                    $lineRange
-                                ) === 1 && ($currentCsvLineNumber === $maxLineNumber))) {
-                            $this->isDone[$this->tokenindex] = true;
-                            throw new DomainException(
-                                sprintf(
-                                    'Processing of CSV file done. Last line processed was line %d',
-                                    $currentCsvLineNumber
-                                ), 200
-                            );
-                        }
                     }
+
+                    $this->processEachCsvLineData($currentCsvLineValue, $combined);
                 } catch (DomainException $domainException) {
-                    $this->successfulCsvLines[$this->tokenindex][$currentCsvLineNumber] = $domainException->getMessage(
-                    );
+                    $this->successfulCsvLines[$this->tokenindex][$currentCsvLineValue] = $domainException->getMessage();
                     throw $domainException;
                 } catch (Throwable $encodeContentException) {
-                    $this->failedCsvLines[$this->tokenindex][$currentCsvLineNumber] = [
+                    $this->failedCsvLines[$this->tokenindex][$currentCsvLineValue] = [
                         'error'      => $encodeContentException->getMessage(),
                         'error_line' => $encodeContentException->getLine()
                     ]; // Store failed CSV line numbers for end report.
@@ -778,11 +718,10 @@ TEXT;
             if ($this->silent == 1) {
                 $this->enqueueMessage(
                     sprintf(
-                        "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
+                        "%s Error message: %s, Error code line: %ds%s",
                         ANSI_COLOR_RED,
                         $e->getMessage(),
                         $e->getLine(),
-                        $currentCsvLineNumber,
                         ANSI_COLOR_NORMAL,
                         CUSTOM_LINE_END
                     ),
@@ -806,25 +745,11 @@ TEXT;
      * @return void
      * @throws JsonException
      */
-    private function processEachCsvLineData(int $dataCurrentCSVline, string|stdClass $data): void
+    private function processEachCsvLineData(int $dataCurrentCSVline, $data): void
     {
-        if (empty($data)) {
-            throw new InvalidArgumentException('Empty data. Cannot continue', 422);
-        }
-
-        if (is_object($data)) {
-            $decodedDataString = $data;
-            $encodedDataString = json_encode($data, JSON_THROW_ON_ERROR);
-        } elseif (json_validate($data)) {
-            $decodedDataString = json_decode($data, false, 512, JSON_THROW_ON_ERROR);
-            $encodedDataString = $data;
-        } else {
-            $decodedDataString = false;
-            $encodedDataString = false;
-        }
-
+        static $retries = 0;
         try {
-            if (($decodedDataString == false) || ($encodedDataString == false) || (!isset($this->token[$decodedDataString->tokenindex]))
+            if (!isset($this->token[$data['tokenindex']])
             ) {
                 throw new InvalidArgumentException('Empty data. Cannot continue', 422);
             }
@@ -833,24 +758,26 @@ TEXT;
             $headers = [
                 'Accept: application/vnd.api+json',
                 'Content-Type: application/json',
-                sprintf('X-Joomla-Token: %s', trim($this->token[$decodedDataString->tokenindex])),
+                sprintf('X-Joomla-Token: %s', trim($this->token[$data['tokenindex']])),
             ];
 
             // Article primary key. Usually 'id'
-            $pk = (int)$decodedDataString->id;
+            $pk = (int)$data['id'];
 
             $currentResponse = $this->processHttpRequest(
                 $pk ? 'PATCH' : 'POST',
                 $this->endpoint(
-                    $this->baseUrl[$decodedDataString->tokenindex],
-                    $this->basePath[$decodedDataString->tokenindex],
+                    $this->baseUrl[$data['tokenindex']],
+                    $this->basePath[$data['tokenindex']],
                     $pk
                 ),
-                $encodedDataString,
+                $data,
                 $headers,
                 self::REQUEST_TIMEOUT,
                 self::USER_AGENT
             );
+
+            var_dump($currentResponse);
 
             $decodedJsonOutput = json_decode(
                 $currentResponse,
@@ -864,19 +791,27 @@ TEXT;
                 // If article is potentially a duplicate (already exists with same alias)
                 if (isset($decodedJsonOutput->errors[0]->code) && $decodedJsonOutput->errors[0]->code === 400) {
                     // Change the alias
-                    $decodedDataString->alias = StringHelper::increment(
-                        StringHelper::strtolower($decodedDataString->alias),
+                    $data['alias'] = StringHelper::increment(
+                        StringHelper::strtolower($data['alias']),
                         'dash'
                     );
                     // Retry
-                    $this->processEachCsvLineData($dataCurrentCSVline, $decodedDataString);
+                    if ($retries < self::MAX_RETRIES) {
+                        ++$retries;
+                        $this->processEachCsvLineData($dataCurrentCSVline, $data);
+                    } else {
+                        throw new RuntimeException(
+                            'Max retries reached. Could not process the request. Maybe a network issue .Stopping here',
+                            0
+                        );
+                    }
                 }
             } elseif (isset($decodedJsonOutput->data->attributes) && !isset($this->successfulCsvLines[$dataCurrentCSVline])) {
                 if ($this->silent == 1) {
                     $this->successfulCsvLines[$dataCurrentCSVline] = sprintf(
                         "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
                         ANSI_COLOR_GREEN,
-                        $decodedDataString->tokenindex,
+                        $data['tokenindex'],
                         $dataCurrentCSVline,
                         $decodedJsonOutput->data->id,
                         $decodedJsonOutput->data->attributes->created,
