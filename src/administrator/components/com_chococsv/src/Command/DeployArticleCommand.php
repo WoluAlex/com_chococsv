@@ -69,7 +69,6 @@ use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
 use function trim;
-use function var_dump;
 
 use const ANSI_COLOR_BLUE;
 use const ANSI_COLOR_GREEN;
@@ -776,8 +775,6 @@ TEXT;
                 self::REQUEST_TIMEOUT,
                 self::USER_AGENT
             );
-
-            var_dump($currentResponse);
 
             $decodedJsonOutput = json_decode(
                 $currentResponse,
