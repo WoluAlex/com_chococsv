@@ -291,7 +291,7 @@ TEXT;
                 ) : ''
             );
 
-            $computedDestinations         = new Registry($destinations);
+            $computedDestinations = new Registry($destinations);
             $computedDestinationsToObject = $computedDestinations->toObject();
 
             foreach ($computedDestinationsToObject as $destination) {
@@ -306,7 +306,7 @@ TEXT;
 
                 $this->failedCsvLines[$this->tokenindex] = [];
                 $this->successfulCsvLines[$this->tokenindex] = [];
-                $this->isDone[$this->tokenindex]         = false;
+                $this->isDone[$this->tokenindex] = false;
 
 
                 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
@@ -340,14 +340,14 @@ TEXT;
 
 
                 $this->expandedLineNumbers[$this->tokenindex] = $this->chooseLinesLikeAPrinter($whatLineNumbersYouWant);
-                $this->isExpanded[$this->tokenindex]          = ($this->expandedLineNumbers[$this->tokenindex] !== []);
+                $this->isExpanded[$this->tokenindex] = ($this->expandedLineNumbers[$this->tokenindex] !== []);
 
 
                 // Your Joomla! website base url
                 $this->baseUrl[$this->tokenindex] = $destination->ref->base_url ?? '';
 
                 // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-                $this->token[$this->tokenindex]    = $destination->ref->auth_apikey ?? '';
+                $this->token[$this->tokenindex] = $destination->ref->auth_apikey ?? '';
                 $this->basePath[$this->tokenindex] = $destination->ref->base_path ?? '/api/index.php/v1';
 
                 // Other Joomla articles fields
@@ -447,8 +447,8 @@ TEXT;
 
 
     /**
-     * @param   string  $message
-     * @param   string  $type
+     * @param string $message
+     * @param string $type
      *
      * @return void
      * @throws Exception
@@ -480,7 +480,7 @@ TEXT;
     }
 
     /**
-     * @param   string  $wantedLineNumbers
+     * @param string $wantedLineNumbers
      *
      * @return array|int[]
      */
@@ -550,7 +550,7 @@ TEXT;
     }
 
     /**
-     * @param   array  $arr
+     * @param array $arr
      *
      * @return array
      * @throws Exception
@@ -558,7 +558,7 @@ TEXT;
     private function nestedJsonDataStructure(array $arr): array
     {
         $handleComplexValues = [];
-        $iterator            = new RecursiveIteratorIterator(
+        $iterator = new RecursiveIteratorIterator(
             new RecursiveArrayIterator($arr),
             RecursiveIteratorIterator::CATCH_GET_CHILD
         );
@@ -600,26 +600,39 @@ TEXT;
     }
 
 
-    private function csvReader(): void
-    {
-        $lineRange = $this->expandedLineNumbers[$this->tokenindex];
-
-        if (empty($this->csvUrl[$this->tokenindex])) {
+    private function csvReader(
+        string|null $givenTokenIndex = null,
+        array|null $givenExpandedLineNumbers = null,
+        string|null $givenCsvUrl = null,
+        array|null $givenExtraDefaultFieldKeys = null,
+        array|null $givenCustomFields = null,
+        array|null $givenSuccessfulCsvLines = null,
+        array|null $givenFailedCsvLines = null,
+        int|null $givenSilentMode = null
+    ): void {
+        $lineRange = $givenExpandedLineNumbers[$givenTokenIndex] ?? $this->expandedLineNumbers[$this->tokenindex];
+        $computedCsvUrl = $givenCsvUrl[$givenTokenIndex] ?? $this->csvUrl[$this->tokenindex];
+        $computedExtraDefaultFieldKeys = $givenExtraDefaultFieldKeys[$givenTokenIndex] ?? $this->extraDefaultFieldKeys[$this->tokenindex];
+        $computedCustomFields = $givenCustomFields[$givenTokenIndex] ?? $this->customFieldKeys[$this->tokenindex];
+        $computedSuccessfulCsvLines = $givenSuccessfulCsvLines[$givenTokenIndex] ?? $this->successfulCsvLines[$this->tokenindex];
+        $computedFailedCsvLines = $givenFailedCsvLines[$givenTokenIndex] ?? $this->successfulCsvLines[$this->tokenindex];
+        $computedSilentMode = $givenSilentMode ?? $this->silent;
+        if (empty($computedCsvUrl)) {
             throw new InvalidArgumentException('Url MUST NOT be empty', 400);
         }
 
         $mergedKeys = array_unique(
             array_merge(
                 self::DEFAULT_ARTICLE_KEYS,
-                $this->extraDefaultFieldKeys[$this->tokenindex],
-                $this->customFieldKeys[$this->tokenindex]
+                $computedExtraDefaultFieldKeys,
+                $computedCustomFields
             )
         );
 
         // Assess robustness of the code by trying random key order
         //shuffle($mergedKeys);
 
-        $resource = fopen($this->csvUrl[$this->tokenindex], 'r');
+        $resource = fopen($computedCsvUrl, 'r');
 
         if ($resource === false) {
             throw new RuntimeException('Could not read csv file', 500);
@@ -683,17 +696,17 @@ TEXT;
                 try {
                     $combined = array_combine($commonKeys, $currentCommonValues);
 
-                    if ($combined == false) {
+                    if (!$combined) {
                         throw new RuntimeException('Current line seem to be invalid', 422);
                     }
 
                     $this->processEachCsvLineData($currentCsvLineValue, $combined);
                 } catch (DomainException $domainException) {
-                    $this->successfulCsvLines[$this->tokenindex][$currentCsvLineValue] = $domainException->getMessage();
+                    $computedSuccessfulCsvLines[$currentCsvLineValue] = $domainException->getMessage();
                     throw $domainException;
                 } catch (Throwable $encodeContentException) {
-                    $this->failedCsvLines[$this->tokenindex][$currentCsvLineValue] = [
-                        'error'      => $encodeContentException->getMessage(),
+                    $computedFailedCsvLines[$currentCsvLineValue] = [
+                        'error' => $encodeContentException->getMessage(),
                         'error_line' => $encodeContentException->getLine()
                     ]; // Store failed CSV line numbers for end report.
                     continue; // Ignore failed CSV lines
@@ -705,7 +718,7 @@ TEXT;
             }
             throw $domainException;
         } catch (Throwable $e) {
-            if ($this->silent == 1) {
+            if ($computedSilentMode == 1) {
                 $this->enqueueMessage(
                     sprintf(
                         "%s Error message: %s, Error code line: %ds%s",
@@ -730,7 +743,7 @@ TEXT;
     }
 
     /**
-     * @param   array  $dataValue
+     * @param array $dataValue
      *
      * @return void
      * @throws JsonException
@@ -746,8 +759,8 @@ TEXT;
 
             // HTTP request headers
             $headers = [
-                'Accept'         => 'application/vnd.api+json',
-                'Content-Type'   => 'application/json',
+                'Accept' => 'application/vnd.api+json',
+                'Content-Type' => 'application/json',
                 'X-Joomla-Token' => trim($this->token[$data['tokenindex']]),
             ];
 
@@ -829,11 +842,11 @@ TEXT;
     }
 
     /**
-     * @param   string      $givenHttpVerb
-     * @param   string      $endpoint
-     * @param   array|null  $data
-     * @param   array       $headers
-     * @param   int         $timeout
+     * @param string $givenHttpVerb
+     * @param string $endpoint
+     * @param array|null $data
+     * @param array $headers
+     * @param int $timeout
      *
      * @return string
      */
@@ -844,7 +857,7 @@ TEXT;
         array $headers,
         int $timeout = 3
     ): string {
-        $uri      = (new Uri($endpoint));
+        $uri = (new Uri($endpoint));
         $response = $this->getHttpClient()->request(
             $givenHttpVerb,
             $uri,
@@ -892,9 +905,26 @@ TEXT;
         return $this->nestedJsonDataStructure($data);
     }
 
-    public function testCsvReader()
-    {
-        $this->csvReader();
+    public function testCsvReader(
+        string|null $givenTokenIndex = null,
+        array|null $givenExpandedLineNumbers = null,
+        string|null $givenCsvUrl = null,
+        array|null $givenExtraDefaultFieldKeys = null,
+        array|null $givenCustomFields = null,
+        array|null $givenSuccessfulCsvLines = null,
+        array|null $givenFailedCsvLines = null,
+        int|null $givenSilentMode = null
+    ) {
+        $this->csvReader(
+            $givenTokenIndex,
+            $givenExpandedLineNumbers,
+            $givenCsvUrl,
+            $givenExtraDefaultFieldKeys,
+            $givenCustomFields,
+            $givenSuccessfulCsvLines,
+            $givenFailedCsvLines,
+            $givenSilentMode
+        );
     }
 
     public function testProcessEachCsvLineData($dataCurrentCSVline, $data)

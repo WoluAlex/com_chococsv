@@ -117,6 +117,17 @@
                 <option value="images">images</option>
                 <option value="urls">urls</option>
             </field>
+            <field name="toggle_custom_fields"
+                   type="radio"
+                   label="COM_CHOCOCSV_TOGGLE_CUSTOM_FIELDS_LABEL"
+                   description="COM_CHOCOCSV_TOGGLE_CUSTOM_FIELDS_DESCRIPTION"
+                   layout="joomla.form.field.radio.switcher"
+                   filter="integer"
+                   default="0"
+            >
+                <option value="0">JNO</option>
+                <option value="1">JYES</option>
+            </field>
             <field
                     name="custom_fields"
                     type="sql"
@@ -130,6 +141,14 @@
                     header="COM_CHOCOCSV_CHOOSE_AN_OPTION_LABEL"
                     class="fancyselect"
                     default=""
+                    showon="toggle_custom_fields:0"
+            />
+            <field name="custom_fields"
+                   type="text"
+                   label="COM_CHOCOCSV_CHOOSE_MANUALLY_CUSTOM_FIELDS_LABEL"
+                   description="COM_CHOCOCSV_CHOOSE_MANUALLY_CUSTOM_FIELDS_DESCRIPTION"
+                   default=""
+                   showon="toggle_custom_fields:1"
             />
         </fields>
     </fieldset>
