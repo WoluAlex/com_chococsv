@@ -143,7 +143,7 @@
                     default=""
                     showon="toggle_custom_fields:0"
             />
-            <field name="custom_fields"
+            <field name="manually_custom_fields"
                    type="text"
                    label="COM_CHOCOCSV_CHOOSE_MANUALLY_CUSTOM_FIELDS_LABEL"
                    description="COM_CHOCOCSV_CHOOSE_MANUALLY_CUSTOM_FIELDS_DESCRIPTION"

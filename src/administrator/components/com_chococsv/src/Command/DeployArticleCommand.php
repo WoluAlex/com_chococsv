@@ -358,7 +358,9 @@ TEXT;
 // Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
 // The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
 // For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
-                $this->customFieldKeys[$this->tokenindex] = array_filter($destination->ref->custom_fields ?? []);
+                $this->customFieldKeys[$this->tokenindex] = array_filter(
+                    ($destination->ref->toggle_custom_fields ? $destination->ref->manually_custom_fields : $destination->ref->custom_fields) ?? []
+                );
 
                 try {
                     $this->csvReader();
