@@ -134,9 +134,13 @@ final class Destination implements ComparableValueObjectInterface
         return $this->tokenIndex;
     }
 
+    public function asString(): string
+    {
+        return $this->getTokenIndex()->asString();
+    }
 
     public function equals(StringAwareValueObjectInterface $other): bool
     {
-        return $this->tokenIndex->asString() === $other->tokenIndex->asString();
+        return $this->asString() === $other->asString();
     }
 }
