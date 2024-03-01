@@ -29,6 +29,6 @@ interface TestableDeployContentInterface
 
     public static function testProcessHttpRequest($givenHttpVerb, $endpoint, $data, $headers, $timeout);
 
-    public function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
+    public static function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
 
 }

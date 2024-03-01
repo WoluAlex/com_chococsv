@@ -375,8 +375,8 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         $mergedKeys = array_unique(
             array_merge(
                 DeployArticleCommandState::DEFAULT_ARTICLE_KEYS,
-                $currentDestination->getExtraDefaultFieldKeys()->asArray(),
-                $currentDestination->getCustomFieldKeys()->asArray(),
+                $currentDestination?->getExtraDefaultFieldKeys()?->asArray() ?? [],
+                $currentDestination?->getCustomFieldKeys()?->asArray() ?? [],
             )
         );
 
@@ -390,7 +390,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         }
 
         $currentCsvLineNumber = CSV_START;
-        $lineRange = $currentDestination->getExpandedLineNumbers()->asArray();
+        $lineRange = $currentDestination?->getExpandedLineNumbers()?->asArray() ?? [];
 
         try {
             stream_set_blocking($resource, false);
@@ -532,7 +532,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
 
             $currentResponse = self::processHttpRequest(
                 $pk ? 'PATCH' : 'POST',
-                $this->endpoint(
+                self::endpoint(
                     $currentDestination->getBaseUrl()->asString(),
                     $currentDestination->getBasePath()->asString(),
                     $pk
@@ -640,7 +640,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
     /**
      * This time we need endpoint to be a function to make it more dynamic
      */
-    private function endpoint(
+    private static function endpoint(
         string $givenBaseUrl,
         string $givenBasePath,
         int|string|null $givenResourceId = null
@@ -678,8 +678,8 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         return self::processHttpRequest($givenHttpVerb, $endpoint, $data, $headers, $timeout);
     }
 
-    public function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId): string
+    public static function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId): string
     {
-        return $this->endpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
+        return self::endpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
     }
 }

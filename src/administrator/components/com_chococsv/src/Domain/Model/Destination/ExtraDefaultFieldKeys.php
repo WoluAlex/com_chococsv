@@ -31,6 +31,11 @@ final class ExtraDefaultFieldKeys
     {
         $extraDefaultFieldKeys = array_filter($givenExtraDefaultFieldKeys);
 
+        if (empty($extraDefaultFieldKeys)) {
+            $this->extraDefaultFieldKeys = $extraDefaultFieldKeys;
+            return;
+        }
+
         if ((($extraDefaultFieldKeys !== []) && !array_intersect($extraDefaultFieldKeys, self::ALLOWED))) {
             throw new InvalidArgumentException('Invalid argument provided.', 422);
         }
