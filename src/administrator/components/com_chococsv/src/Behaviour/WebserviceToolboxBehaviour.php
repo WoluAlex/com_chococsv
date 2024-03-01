@@ -35,7 +35,7 @@ trait WebserviceToolboxBehaviour
      *
      * @return TransportInterface
      */
-    private function getHttpClient(): TransportInterface
+    public static function getHttpClient(): TransportInterface
     {
         return (new HttpFactory())->getAvailableDriver();
     }
@@ -46,7 +46,7 @@ trait WebserviceToolboxBehaviour
      * @return void
      * @throws JsonException
      */
-    private function displayJsonResponse(Response $response): void
+    public static function displayJsonResponse(Response $response): void
     {
         $headers = $response->getHeaders();
         foreach ($headers as $k => $v) {
