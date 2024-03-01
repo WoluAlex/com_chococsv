@@ -1,4 +1,16 @@
 {
+  "name": "alexapi/chococsv",
+  "description": "A sprinkle of chocolate in a bowl of CSV",
+  "license": [
+    "AGPL-3.0-or-later"
+  ],
+  "authors": [
+    {
+      "name": "Mr Alexandre J-S William ELISÉ",
+      "email": "code@apiadept.com",
+      "homepage": "https://apiadept.com"
+    }
+  ],
   "config": {
     "platform": {
       "php": "8.3.3"
@@ -25,6 +37,8 @@
   },
   "autoload-dev": {
     "psr-4": {
+      "AlexApi\\Component\\Chococsv\\Administrator\\": "src/administrator/components/com_chococsv/src",
+      "AlexApi\\Component\\Chococsv\\Site\\": "src/components/com_chococsv/src",
       "Tests\\": "Tests/"
     }
   },

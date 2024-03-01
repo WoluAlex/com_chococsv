@@ -9,21 +9,25 @@ namespace AlexApi\Component\Chococsv\Administrator\Command;
 
 // phpcs:disable PSR1.Files.SideEffects
 
-\defined('_JEXEC') or die;
+use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\Destination;
+use AlexApi\Component\Chococsv\Administrator\Domain\Model\State\DeployArticleCommandState;
+
+use function defined;
+
+defined('_JEXEC') or die;
 
 // phpcs:enable PSR1.Files.SideEffects
 
 interface TestableDeployContentInterface
 {
-    public function testChooseLinesLikeAPrinter($linesYouWant);
+    public function testCsvReader(
+        DeployArticleCommandState $deployArticleCommandState,
+        Destination $currentDestination
+    );
 
-    public function testNestedJsonDataStructure($data);
+    public function testProcessEachCsvLineData($dataCurrentCsvLine, $data, $currentDestination);
 
-    public function testCsvReader();
-
-    public function testProcessEachCsvLineData($dataCurrentCSVline, $data);
-
-    public function testProcessHttpRequest($givenHttpVerb, $endpoint, $data, $headers, $timeout);
+    public static function testProcessHttpRequest($givenHttpVerb, $endpoint, $data, $headers, $timeout);
 
     public function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
 

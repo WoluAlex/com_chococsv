@@ -14,7 +14,9 @@ namespace AlexApi\Component\Chococsv\Administrator\View\Chococsv;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Toolbar\ToolbarHelper;
 
-\defined('_JEXEC') or die;
+use function defined;
+
+defined('_JEXEC') or die;
 
 // phpcs:enable PSR1.Files.SideEffects
 
