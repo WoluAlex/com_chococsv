@@ -57,8 +57,8 @@ TEXT;
 
     private function __construct(
         array $destinations,
-        private readonly SilentMode $silent,
-        private readonly SaveReportToFile $saveReportToFile
+        private SilentMode $silent,
+        private SaveReportToFile $saveReportToFile
     ) {
         if (empty($destinations)) {
             throw new DomainException(

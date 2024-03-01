@@ -127,7 +127,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
      */
     private StyleInterface|null $consoleOutputStyle;
 
-    private function __construct(private readonly DeployArticleCommandState $deployArticleCommandState)
+    private function __construct(private DeployArticleCommandState $deployArticleCommandState)
     {
         if (!$this->isSupported()) {
             throw new RuntimeException('This feature is not supported on your platform.', 501);
@@ -175,15 +175,20 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                     continue;
                 }
 
+                if (!$destination?->ref?->tokenindex) {
+                    continue;
+                }
+
                 $typedDestination = Destination::fromTokenIndex(TokenIndex::fromString($destination->ref->tokenindex));
 
-                $this->deployArticleCommandState->withFailedCsvLines(
+                // IMPORTANT!: Remember to set back the new state after using a "wither"
+                $this->deployArticleCommandState = $this->deployArticleCommandState->withFailedCsvLines(
                     [$typedDestination->getTokenIndex()->asString() => []]
                 );
-                $this->deployArticleCommandState->withSuccessfulCsvLines(
+                $this->deployArticleCommandState = $this->deployArticleCommandState->withSuccessfulCsvLines(
                     [$typedDestination->getTokenIndex()->asString() => []]
                 );
-                $this->deployArticleCommandState->withDone(false);
+                $this->deployArticleCommandState = $this->deployArticleCommandState->withDone(false);
 
                 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
                 $isLocal = (bool)$destination->ref->is_local;
@@ -205,23 +210,27 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                     }
                 }
 
-                $typedDestination->withCsvUrl($givenCsvUrl);
+                $typedDestination = $typedDestination->withCsvUrl($givenCsvUrl);
 
 
 // Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
                 $whatLineNumbersYouWant = $destination->ref->what_line_numbers_you_want ?? '';
 
-                $typedDestination->withExpandedLineNumbers($whatLineNumbersYouWant);
+                $typedDestination = $typedDestination->withExpandedLineNumbers($whatLineNumbersYouWant);
 
                 // Your Joomla! website base url
-                $typedDestination->withBaseUrl($destination->ref->base_url ?? '');
+                $typedDestination = $typedDestination->withBaseUrl($destination->ref->base_url ?? '');
 
                 // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-                $typedDestination->withToken($destination->ref->auth_apikey ?? '');
-                $typedDestination->withBasePath($destination->ref->base_path ?? '/api/index.php/v1');
+                $typedDestination = $typedDestination->withToken($destination->ref->auth_apikey ?? '');
+                $typedDestination = $typedDestination->withBasePath(
+                    $destination->ref->base_path ?? '/api/index.php/v1'
+                );
 
                 // Other Joomla articles fields
-                $typedDestination->withExtraDefaultFieldKeys($destination->ref->extra_default_fields ?? []);
+                $typedDestination = $typedDestination->withExtraDefaultFieldKeys(
+                    $destination->ref->extra_default_fields ?? []
+                );
 
 // Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
 // The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
@@ -231,7 +240,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                 } else {
                     $givenCustomFields = $destination?->ref?->custom_fields ?? [];
                 }
-                $typedDestination->withCustomFieldKeys($givenCustomFields);
+                $typedDestination = $typedDestination->withCustomFieldKeys($givenCustomFields);
 
                 try {
                     $this->csvReader(
@@ -273,11 +282,11 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                         }
                         if (!empty(
                             $this->deployArticleCommandState->getFailedCsvLines()[$typedDestination->getTokenIndex(
-                            )] ?? []
+                            )->asString()] ?? []
                         )) {
                             $errors = [
                                 'errors' => $this->deployArticleCommandState->getFailedCsvLines(
-                                )[$typedDestination->getTokenIndex()]
+                                )[$typedDestination->getTokenIndex()->asString()]
                             ];
                             if ($givenSaveReportToFile === 2) {
                                 File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode($errors));
@@ -285,11 +294,11 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                         }
                         if (($givenSaveReportToFile === 1) && !empty(
                             $this->deployArticleCommandState->getSuccessfulCsvLines()[$typedDestination->getTokenIndex(
-                            )]
+                            )->asString()]
                             )) {
                             $success = [
                                 'success' => $this->deployArticleCommandState->getSuccessfulCsvLines(
-                                )[$typedDestination->getTokenIndex()]
+                                )[$typedDestination->getTokenIndex()->asString()]
                             ];
                             File::write(CSV_PROCESSING_REPORT_FILEPATH, json_encode(array_merge($errors, $success)));
                         }
