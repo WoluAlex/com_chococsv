@@ -12,7 +12,7 @@ use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\ComparableValue
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\StringAwareValueObjectInterface;
 use InvalidArgumentException;
 
-use function str_starts_with;
+use function preg_match;
 
 final class BasePath implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
@@ -22,10 +22,7 @@ final class BasePath implements StringAwareValueObjectInterface, ComparableValue
     {
         $basePath = trim($givenBasePath);
 
-        if (empty($basePath)
-            || !str_starts_with($basePath, '/api/index.php/v1')
-            || !str_starts_with($basePath, '/api/v1')
-        ) {
+        if (preg_match('|^(/api/(index\.php/)?v1)|', $basePath) !== 1) {
             throw new InvalidArgumentException('Base path is invalid', 422);
         }
 

@@ -12,8 +12,8 @@ use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\ComparableValue
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\StringAwareValueObjectInterface;
 use InvalidArgumentException;
 
+use function preg_match;
 use function str_contains;
-use function str_starts_with;
 
 final class CsvUrl implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
@@ -21,10 +21,10 @@ final class CsvUrl implements StringAwareValueObjectInterface, ComparableValueOb
 
     private function __construct(string $csvUrl)
     {
-        if (empty($csvUrl)
-            || !str_contains($csvUrl, '/media/com_chococsv/')
-            || !str_starts_with($csvUrl, 'https://')
-            || !str_starts_with($csvUrl, 'http://')
+        if (
+            !(empty($csvUrl)
+                xor (!str_contains($csvUrl, '/media/com_chococsv/'))
+                xor (preg_match('|^(https?://)|', $csvUrl) !== 1))
         ) {
             throw new InvalidArgumentException('CSV Url is invalid', 422);
         }

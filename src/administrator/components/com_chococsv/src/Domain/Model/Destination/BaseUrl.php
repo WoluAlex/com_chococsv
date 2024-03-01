@@ -12,7 +12,7 @@ use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\ComparableValue
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\StringAwareValueObjectInterface;
 use InvalidArgumentException;
 
-use function str_starts_with;
+use function preg_match;
 
 final class BaseUrl implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
@@ -20,9 +20,7 @@ final class BaseUrl implements StringAwareValueObjectInterface, ComparableValueO
 
     private function __construct(string $baseUrl)
     {
-        if (empty($baseUrl)
-            || !str_starts_with($baseUrl, 'https://')
-            || !str_starts_with($baseUrl, 'http://')) {
+        if (preg_match('|^(https?://)|', $baseUrl) !== 1) {
             throw new InvalidArgumentException('Base Url is invalid', 422);
         }
 
