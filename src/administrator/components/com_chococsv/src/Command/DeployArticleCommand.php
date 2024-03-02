@@ -165,12 +165,6 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                 $typedDestination = Destination::fromTokenIndex(TokenIndex::fromString($destination->ref->tokenindex));
 
                 // IMPORTANT!: Remember to set back the new state after using a "wither"
-                $this->deployArticleCommandState = $this->deployArticleCommandState->withFailedCsvLines(
-                    [$typedDestination->getTokenIndex()->asString() => []]
-                );
-                $this->deployArticleCommandState = $this->deployArticleCommandState->withSuccessfulCsvLines(
-                    [$typedDestination->getTokenIndex()->asString() => []]
-                );
                 $this->deployArticleCommandState = $this->deployArticleCommandState->withDone(false);
 
                 // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
