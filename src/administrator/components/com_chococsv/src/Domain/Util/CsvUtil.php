@@ -9,16 +9,26 @@ declare(strict_types=1);
 
 namespace AlexApi\Component\Chococsv\Administrator\Domain\Util;
 
+use Throwable;
+
+use function array_intersect_key;
 use function array_merge;
 use function array_unique;
 use function explode;
+use function fclose;
+use function feof;
 use function in_array;
+use function is_resource;
 use function range;
 use function sort;
 use function str_contains;
+use function str_getcsv;
+use function stream_get_line;
+use function stream_set_blocking;
 use function strlen;
 
 use const CSV_START;
+use const PHP_EOL;
 use const SORT_ASC;
 use const SORT_NATURAL;
 
@@ -94,5 +104,46 @@ final class CsvUtil
         return $unique;
     }
 
+    /**
+     * @param $resource
+     * @param array $linesYouWant
+     * @param callable $success
+     * @param callable $error
+     * @return void
+     */
+    public static function computeCsv(
+        $resource,
+        array $linesYouWant,
+        array $mergedKeys,
+        callable $success,
+        callable $error
+    ) {
+        stream_set_blocking($resource, false);
+        $currentCsvLineNumber = 1;
+        $csvHeader = str_getcsv(stream_get_line($resource, 1024 * 1024, PHP_EOL) ?? '');
+        $flippedMergedKeys = array_flip($mergedKeys);
+        while (!feof($resource)) {
+            try {
+                if ($linesYouWant && !in_array($currentCsvLineNumber, $linesYouWant, true)) {
+                    continue;
+                }
+                $parsed = str_getcsv(stream_get_line($resource, 1024 * 1024, PHP_EOL) ?? '');
+                $success([
+                    'csv_line' => $currentCsvLineNumber,
+                    'csv_header' => array_intersect_key($csvHeader, $flippedMergedKeys),
+                    'csv_parsed' => $parsed,
+                ]);
+            } catch (Throwable $e) {
+                ++$currentCsvLineNumber;
+                //Log/Show message
+                $error($e);
+                continue;
+            }
+            ++$currentCsvLineNumber;
+        }
+        if (($resource !== null) && is_resource($resource)) {
+            fclose($resource);
+        }
+    }
 
 }
