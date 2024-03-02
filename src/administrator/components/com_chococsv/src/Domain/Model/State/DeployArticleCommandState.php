@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 namespace AlexApi\Component\Chococsv\Administrator\Domain\Model\State;
 
-use DomainException;
+use InvalidArgumentException;
 
 final class DeployArticleCommandState
 {
@@ -49,10 +49,6 @@ TEXT;
     private array $destinations = [];
     private bool $showAsciiBanner = false;
 
-    private array $successfulCsvLines = [];
-
-    private array $failedCsvLines = [];
-
     private bool $isDone = false;
 
     private function __construct(
@@ -61,7 +57,7 @@ TEXT;
         private SaveReportToFile $saveReportToFile
     ) {
         if (empty($destinations)) {
-            throw new DomainException(
+            throw new InvalidArgumentException(
                 'Destinations subform MUST contain at least one destination where your articles will be deployed',
                 422
             );
@@ -94,20 +90,6 @@ TEXT;
         return $this->showAsciiBanner;
     }
 
-    public function withSuccessfulCsvLines(array $value): self
-    {
-        $cloned = clone $this;
-        $cloned->successfulCsvLines = $value;
-        return $cloned;
-    }
-
-    public function withFailedCsvLines(array $value): self
-    {
-        $cloned = clone $this;
-        $cloned->failedCsvLines = $value;
-        return $cloned;
-    }
-
     public function withDone(bool $value): self
     {
         $cloned = clone $this;
@@ -123,16 +105,6 @@ TEXT;
     public function isShowAsciiBanner(): bool
     {
         return $this->showAsciiBanner;
-    }
-
-    public function getSuccessfulCsvLines(): array
-    {
-        return $this->successfulCsvLines;
-    }
-
-    public function getFailedCsvLines(): array
-    {
-        return $this->failedCsvLines;
     }
 
     public function isDone(): bool
