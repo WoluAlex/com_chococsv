@@ -11,6 +11,7 @@ namespace AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination;
 
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\ComparableValueObjectInterface;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\StringAwareValueObjectInterface;
+use SensitiveParameter;
 
 final class Destination implements ComparableValueObjectInterface
 {
@@ -66,7 +67,7 @@ final class Destination implements ComparableValueObjectInterface
         return $cloned;
     }
 
-    public function withToken(string $value): self
+    public function withToken(#[SensitiveParameter] string $value): self
     {
         $cloned = clone $this;
         $cloned->token = Token::fromString($value);

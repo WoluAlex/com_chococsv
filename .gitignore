@@ -1,0 +1,26 @@
+!.gitignore
+!.gitattributes
+!/src/
+!/Tests/
+!/tools/
+!/composer.json
+!/deptrac.yaml
+!/phpbench.json
+!/phpdoc.xml
+!/phpstan.neon
+!/phpunit.xml
+!/rector.php
+!/rector-phpunit.php
+!/bootstrap.php
+
+# ini file containing Joomla Web Services Api token for Smoke Tests
+!/api-config.dist.ini
+
+!/LICENSE.txt
+!/README.md
+/build/*
+/.phpdoc/
+/docs/*
+/vendor/
+/composer.lock
+/api-config.ini

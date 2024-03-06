@@ -20,7 +20,7 @@ use Joomla\DI\ServiceProviderInterface;
 defined('_JEXEC') or die;
 
 return new class () implements ServiceProviderInterface {
-    public function register(Container $container)
+    public function register(Container $container): void
     {
         $container->set(
             InstallerScriptInterface::class,
@@ -33,7 +33,7 @@ return new class () implements ServiceProviderInterface {
                  * @var    string
                  * @since  0.1.0
                  */
-                protected $minimumPhp = '8.1.0';
+                protected $minimumPhp = '8.2.0';
 
                 /**
                  * Minimum Joomla version to check
@@ -115,5 +115,15 @@ return new class () implements ServiceProviderInterface {
                 }
             }
         );
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 };

@@ -1,0 +1,44 @@
+# deptrac.yaml
+deptrac:
+  paths:
+    - ./src
+  exclude_files:
+    - '#.*test.*#'
+    - '#.*Test.*#'
+  layers:
+    - name: Infrastructure
+      collectors:
+        - type: className
+          regex: .*\\Administrator\\Behaviour\\.*
+        - type: className
+          regex: .*\\Administrator\\Command\\.*
+        - type: className
+          regex: .*\\Administrator\\Controller\\.*
+        - type: className
+          regex: .*\\Administrator\\Dispatcher\\.*
+        - type: className
+          regex: .*\\Administrator\\Extension\\.*
+        - type: className
+          regex: .*\\Administrator\\View\\.*
+        - type: className
+          regex: .*\\Site\\Controller\\.*
+        - type: className
+          regex: .*\\Site\\Dispatcher\\.*
+
+    - name: Domain
+      collectors:
+        - type: className
+          regex: .*\\Domain\\.*
+    # missing application layer in this architecture but should be fine for now
+  ruleset:
+    Infrastructure:
+      - Domain
+    Domain:
+    # nothing
+
+  formatters:
+    graphviz:
+      pointToGroups: true
+      groups:
+        Domain:
+        Infrastructure:

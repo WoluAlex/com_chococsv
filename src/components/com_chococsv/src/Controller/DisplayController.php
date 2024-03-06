@@ -25,5 +25,13 @@ defined('_JEXEC') or die;
  */
 final class DisplayController extends BaseController
 {
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
 
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

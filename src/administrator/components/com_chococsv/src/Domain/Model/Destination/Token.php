@@ -10,6 +10,7 @@ namespace AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination;
 
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\ComparableValueObjectInterface;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\StringAwareValueObjectInterface;
+use SensitiveParameter;
 
 final class Token implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
@@ -21,7 +22,7 @@ final class Token implements StringAwareValueObjectInterface, ComparableValueObj
         $this->token = trim($value);
     }
 
-    public static function fromString(string $value): static
+    public static function fromString(#[SensitiveParameter] string $value): static
     {
         return (new self($value));
     }
@@ -39,6 +40,16 @@ final class Token implements StringAwareValueObjectInterface, ComparableValueObj
     public function equals(StringAwareValueObjectInterface $other): bool
     {
         return $this->asString() === $other->asString();
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 
 }

@@ -9,8 +9,15 @@ declare(strict_types=1);
 
 namespace AlexApi\Component\Chococsv\Administrator\Domain\Util;
 
-use Throwable;
+use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\Destination;
+use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\TokenIndexMismatchException;
+use AlexApi\Component\Chococsv\Administrator\Domain\Model\State\DeployArticleCommandState;
+use Error;
+use InvalidArgumentException;
+use LogicException;
+use UnexpectedValueException;
 
+use function array_intersect;
 use function array_intersect_key;
 use function array_merge;
 use function array_unique;
@@ -21,13 +28,13 @@ use function in_array;
 use function is_resource;
 use function range;
 use function sort;
+use function sprintf;
 use function str_contains;
 use function str_getcsv;
 use function stream_get_line;
 use function stream_set_blocking;
 use function strlen;
 
-use const CSV_START;
 use const PHP_EOL;
 use const SORT_ASC;
 use const SORT_NATURAL;
@@ -39,7 +46,7 @@ final class CsvUtil
      *
      * @return array|int[]
      */
-    public static function chooseLinesLikeAPrinter(string $wantedLineNumbers = ''): array
+    public static function chooseLinesLikeAPrinter(string $wantedLineNumbers = '', int $csvActualStartLine = 2): array
     {
         // When strictly empty process every Csv lines (Full range)
         if ($wantedLineNumbers === '') {
@@ -48,7 +55,7 @@ final class CsvUtil
 
         // Cut-off useless processing when single digit range
         if (strlen($wantedLineNumbers) === 1) {
-            return (((int)$wantedLineNumbers) < CSV_START) ? [CSV_START] : [((int)$wantedLineNumbers)];
+            return (((int)$wantedLineNumbers) < $csvActualStartLine) ? [$csvActualStartLine] : [((int)$wantedLineNumbers)];
         }
 
         $commaParts = explode(',', $wantedLineNumbers);
@@ -60,7 +67,7 @@ final class CsvUtil
         foreach ($commaParts as $commaPart) {
             if (!str_contains($commaPart, '-')) {
                 // First line is the header, so we MUST start at least at line 2. Hence, 2 or more
-                $result1 = ((int)$commaPart) > 1 ? ((int)$commaPart) : CSV_START;
+                $result1 = ((int)$commaPart) > 1 ? ((int)$commaPart) : $csvActualStartLine;
                 // Makes it unique in output array
                 if (!in_array($result1, $output, true)) {
                     $output[] = $result1;
@@ -72,7 +79,7 @@ final class CsvUtil
             $dashParts = explode('-', $commaPart, 2);
             if (empty($dashParts)) {
                 // First line is the header, so we MUST start at least at line 2. Hence, 2 or more
-                $result2 = ((int)$commaPart) > 1 ? ((int)$commaPart) : CSV_START;
+                $result2 = ((int)$commaPart) > 1 ? ((int)$commaPart) : $csvActualStartLine;
                 if (!in_array($result2, $output, true)) {
                     $output[] = $result2;
                 }
@@ -80,10 +87,10 @@ final class CsvUtil
                 continue;
             }
             // First line is the header, so we MUST start at least at line 2. Hence, 2 or more
-            $dashParts[0] = ((int)$dashParts[0]) > 1 ? ((int)$dashParts[0]) : CSV_START;
+            $dashParts[0] = ((int)$dashParts[0]) > 1 ? ((int)$dashParts[0]) : $csvActualStartLine;
 
             // First line is the header, so we MUST start at least at line 2. Hence, 2 or more
-            $dashParts[1] = ((int)$dashParts[1]) > 1 ? ((int)$dashParts[1]) : CSV_START;
+            $dashParts[1] = ((int)$dashParts[1]) > 1 ? ((int)$dashParts[1]) : $csvActualStartLine;
 
             // Only store one digit if both are the same in the range
             if (($dashParts[0] === $dashParts[1]) && (!in_array($dashParts[0], $output, true))) {
@@ -116,34 +123,96 @@ final class CsvUtil
         array $linesYouWant,
         array $mergedKeys,
         callable $success,
-        callable $error
-    ) {
+        callable $error,
+        int $csvActualStartLine = 2
+    ): void {
+        if (!is_resource($resource)) {
+            throw new InvalidArgumentException(
+                'Resource provided is invalid. Might be file not found or not readable',
+                400
+            );
+        }
+
         stream_set_blocking($resource, false);
-        $currentCsvLineNumber = 1;
-        $csvHeader = str_getcsv(stream_get_line($resource, 1024 * 1024, PHP_EOL) ?? '');
-        $flippedMergedKeys = array_flip($mergedKeys);
-        while (!feof($resource)) {
+        $currentCsvLineNumber = $csvActualStartLine;
+        $csvHeader = str_getcsv(stream_get_line($resource, 1024 * 1024, PHP_EOL) ?: '');
+
+        $computedCsvHeader = array_intersect($csvHeader, $mergedKeys);
+
+        while (feof($resource) !== true) {
             try {
-                if ($linesYouWant && !in_array($currentCsvLineNumber, $linesYouWant, true)) {
-                    continue;
+                $parsed = str_getcsv(stream_get_line($resource, 1024 * 1024, PHP_EOL) ?: '');
+
+                $computed = array_intersect_key($parsed, $computedCsvHeader);
+                if ($computed === []) {
+                    throw new UnexpectedValueException(
+                        sprintf('CSV Line %d could not be parsed or empty line', $currentCsvLineNumber), 422
+                    );
                 }
-                $parsed = str_getcsv(stream_get_line($resource, 1024 * 1024, PHP_EOL) ?? '');
-                $success([
-                    'csv_line' => $currentCsvLineNumber,
-                    'csv_header' => array_intersect_key($csvHeader, $flippedMergedKeys),
-                    'csv_parsed' => $parsed,
-                ]);
-            } catch (Throwable $e) {
+// Process only lines you want
+                if (($linesYouWant === []) || in_array($currentCsvLineNumber, $linesYouWant, true)) {
+                    try {
+                        //Ignore Invalid Lines
+                        if (count($computedCsvHeader) !== count($computed)) {
+                            ++$currentCsvLineNumber;
+                            continue;
+                        }
+
+                        $success([
+                            'csv_line' => $currentCsvLineNumber,
+                            'csv_header' => $computedCsvHeader,
+                            'csv_parsed' => $computed,
+                        ]);
+                    } catch (TokenIndexMismatchException $tokenMismatchException) {
+                        // Happens when destination is not configured or disabled
+                        // For specific CSV line matching that tokenindex
+                        // For example when app-002 is disabled in destinations configuration. It is not a failure per-se it's how we manage this in chococsv
+                        ++$currentCsvLineNumber;
+                        continue;
+                    }
+                }
+                ++$currentCsvLineNumber;
+            } catch (LogicException $e) {
                 ++$currentCsvLineNumber;
                 //Log/Show message
                 $error($e);
                 continue;
+            } catch (Error $e2) {
+                $error($e2);
+                if (isset($resource) && is_resource($resource)) {
+                    fclose($resource);
+                }
+                break;
             }
-            ++$currentCsvLineNumber;
         }
-        if (($resource !== null) && is_resource($resource)) {
+        if (isset($resource) && is_resource($resource)) {
             fclose($resource);
         }
     }
 
+
+    /**
+     * @param Destination $currentDestination
+     * @return array
+     */
+    public static function computeMergedKeys(Destination $currentDestination): array
+    {
+        return array_unique(
+            array_merge(
+                DeployArticleCommandState::DEFAULT_ARTICLE_KEYS,
+                ($currentDestination?->getExtraDefaultFieldKeys()?->asArray() ?? []),
+                ($currentDestination?->getCustomFieldKeys()?->asArray() ?? [])
+            )
+        );
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }
