@@ -50,4 +50,13 @@ final class BasePath implements StringAwareValueObjectInterface, ComparableValue
         return $this->asString() === $other->asString();
     }
 
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

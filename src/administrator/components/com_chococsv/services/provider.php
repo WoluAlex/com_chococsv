@@ -33,13 +33,13 @@ return new class implements ServiceProviderInterface {
     /**
      * Registers the service provider with a DI container.
      *
-     * @param   Container  $container  The DI container.
+     * @param Container $container The DI container.
      *
      * @return  void
      *
      * @since   0.1.0
      */
-    public function register(Container $container)
+    public function register(Container $container): void
     {
         $container->registerServiceProvider(
             new MVCFactory('\\AlexApi\\Component\\Chococsv')
@@ -60,5 +60,15 @@ return new class implements ServiceProviderInterface {
                 return $component;
             }
         );
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 };

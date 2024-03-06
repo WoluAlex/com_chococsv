@@ -41,7 +41,7 @@ trait WebserviceToolboxBehaviour
     }
 
     /**
-     * @param   Response  $response
+     * @param Response $response
      *
      * @return void
      * @throws JsonException
@@ -57,5 +57,15 @@ trait WebserviceToolboxBehaviour
         }
         http_response_code($response->code);
         echo json_encode($response->body, JSON_THROW_ON_ERROR);
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 }

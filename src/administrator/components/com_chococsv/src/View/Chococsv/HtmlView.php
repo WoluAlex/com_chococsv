@@ -22,7 +22,7 @@ defined('_JEXEC') or die;
 
 final class HtmlView extends \Joomla\CMS\MVC\View\HtmlView
 {
-    public function display($tpl = null)
+    public function display($tpl = null): void
     {
         ToolbarHelper::title(Text::_('COM_CHOCOCSV'), 'table');
 
@@ -31,6 +31,16 @@ final class HtmlView extends \Joomla\CMS\MVC\View\HtmlView
         }
 
         parent::display($tpl);
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 
 }

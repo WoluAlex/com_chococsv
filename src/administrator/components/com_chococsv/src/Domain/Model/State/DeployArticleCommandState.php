@@ -27,6 +27,7 @@ TEXT;
 
     public const DEFAULT_ARTICLE_KEYS = [
         'id',
+        'tokenindex',
         'access',
         'title',
         'alias',
@@ -38,7 +39,6 @@ TEXT;
         'metadesc',
         'metakey',
         'state',
-        'tokenindex',
     ];
 
     public const MAX_RETRIES = 3;
@@ -102,10 +102,6 @@ TEXT;
         return $this->destinations;
     }
 
-    public function isShowAsciiBanner(): bool
-    {
-        return $this->showAsciiBanner;
-    }
 
     public function isDone(): bool
     {
@@ -122,5 +118,13 @@ TEXT;
         return $this->saveReportToFile;
     }
 
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
 
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

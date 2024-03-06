@@ -37,4 +37,14 @@ final class CustomFieldFieldKeys
     {
         return implode(',', $this->asArray());
     }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

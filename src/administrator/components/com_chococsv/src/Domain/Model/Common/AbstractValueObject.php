@@ -15,12 +15,19 @@ use InvalidArgumentException;
 abstract class AbstractValueObject implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
     protected string $value;
-    protected const string REGEX = '(([a-zA-Z0-9\']|[à-ü]|[À-Ü]|œ|Œ|\p{Greek}){1,10}\s?-?\s?([a-zA-Z0-9\']|[à-ü]|[À-Ü]|œ|Œ|\p{Greek}){0,10}\s?-?\s?([a-zA-Z0-9\']|[à-ü]|[À-Ü]|œ|Œ|\p{Greek}){0,10}\s?-?\s?([a-zA-Z0-9\']|[à-ü]|[À-Ü]|œ|Œ|\p{Greek}){0,10})';
+    protected const string REGEX = '([\p{C}\p{L}\p{M}\p{N}\p{P}\p{S}\p{Z}]{1,65535})';
 
-    private function __construct(string $value)
+    private function __construct(string $givenValue)
     {
-        if (preg_match('/^' . static::REGEX . '$/', $value) !== 1) {
-            throw new InvalidArgumentException('Invalid argument provided. Cannot continue.', 422);
+        $value = trim($givenValue);
+        if (preg_match('/^' . static::REGEX . '$/Uu', $value) !== 1) {
+            throw new InvalidArgumentException(
+                message: ($value ? sprintf(
+                    'Invalid argument provided %s. Cannot continue.',
+                    $value
+                ) : 'Empty value provided. Cannot continue'),
+                code: 422
+            );
         }
         $this->value = $value;
     }
@@ -44,5 +51,16 @@ abstract class AbstractValueObject implements StringAwareValueObjectInterface, C
     {
         return $this->asString() === $other->asString();
     }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
+
 
 }

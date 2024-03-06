@@ -20,7 +20,7 @@
                label="COM_CHOCOCSV_EXTRA_FEATURES_LABEL"/>
         <field name="show_ascii_banner"
                type="radio"
-               default="0"
+               default="1"
                label="COM_CHOCOCSV_SHOW_ASCII_BANNER_LABEL"
                description="COM_CHOCOCSV_SHOW_ASCII_BANNER_DESCRIPTION"
                layout="joomla.form.field.radio.switcher"
