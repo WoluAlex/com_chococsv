@@ -28,7 +28,7 @@ defined('_JEXEC') or die;
 
 class Dispatcher extends ComponentDispatcher
 {
-    protected function loadLanguage()
+    protected function loadLanguage(): void
     {
         $this->app->getLanguage()->load($this->option, JPATH_BASE) || $this->app->getLanguage()->load(
             $this->option,
@@ -36,13 +36,13 @@ class Dispatcher extends ComponentDispatcher
         );
     }
 
-    public function dispatch()
+    public function dispatch(): void
     {
         try {
             parent::dispatch();
         } catch (Throwable $e) {
             Log::add(
-                sprintf('%s %s %d', $e->getMessage(), $e->getFile(), $e->getLine()),
+                sprintf('%s %s %d', $e->getMessage(), basename($e->getFile()), $e->getLine()),
                 Log::ERROR,
                 sprintf(
                     '%s.%s',
@@ -53,5 +53,15 @@ class Dispatcher extends ComponentDispatcher
                 )
             );
         }
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 }

@@ -50,4 +50,14 @@ final class CsvUrl implements StringAwareValueObjectInterface, ComparableValueOb
     {
         return $this->asString() === $other->asString();
     }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

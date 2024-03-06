@@ -57,4 +57,14 @@ final class ExtraDefaultFieldKeys
     {
         return $this->extraDefaultFieldKeys;
     }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

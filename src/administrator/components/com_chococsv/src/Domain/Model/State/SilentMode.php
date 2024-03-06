@@ -35,4 +35,14 @@ final class SilentMode
     {
         return $this->silent;
     }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

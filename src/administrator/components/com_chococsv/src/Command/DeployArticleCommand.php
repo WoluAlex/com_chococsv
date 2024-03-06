@@ -15,6 +15,7 @@ use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\BasePath;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\BaseUrl;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\Destination;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\TokenIndex;
+use AlexApi\Component\Chococsv\Administrator\Domain\Model\Destination\TokenIndexMismatchException;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\State\DeployArticleCommandState;
 use AlexApi\Component\Chococsv\Administrator\Domain\Util\CsvUtil;
 use Exception;
@@ -29,25 +30,21 @@ use Joomla\CMS\Uri\Uri;
 use Joomla\Filesystem\Path;
 use Joomla\Http\TransportInterface;
 use Joomla\Registry\Registry;
-use Joomla\String\StringHelper;
 use RuntimeException;
 use Symfony\Component\Console\Style\StyleInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Throwable;
 use UnexpectedValueException;
 
-use function array_merge;
-use function array_unique;
+use function array_combine;
 use function define;
 use function defined;
-use function fclose;
 use function fopen;
 use function in_array;
 use function ini_set;
-use function is_readable;
-use function is_resource;
 use function json_decode;
 use function json_encode;
+use function random_bytes;
 use function sprintf;
 
 use const ANSI_COLOR_BLUE;
@@ -61,6 +58,7 @@ use const IS_CLI;
 use const JSON_THROW_ON_ERROR;
 use const PHP_EOL;
 use const PHP_SAPI;
+use const PROJECT_TEST;
 
 \defined('_JEXEC') or die;
 
@@ -94,7 +92,9 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
 {
     use WebserviceToolboxBehaviour;
 
-    const LOG_CATEGORY = 'com_chococsv.deploy.article.command';
+    private const LOG_CATEGORY = 'com_chococsv.deploy.article.command';
+
+    private array $retries = [];
 
     /**
      * @var TransportInterface|null
@@ -124,7 +124,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
     public function deploy(): void
     {
         // Show the ASCII Art banner or not
-        $enviromentAwareDisplay = (
+        $environmentAwareDisplay = (
         IS_CLI ?
             DeployArticleCommandState::ASCII_BANNER
             : sprintf(
@@ -139,129 +139,46 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                     sprintf(
                         '%s %s %s%s',
                         ANSI_COLOR_BLUE,
-                        $enviromentAwareDisplay,
+                        $environmentAwareDisplay,
                         ANSI_COLOR_NORMAL,
                         CUSTOM_LINE_END
                     )
                 );
             }
-            $computedDestinations = new Registry($this->deployArticleCommandState->getDestinations());
-            $computedDestinationsToObject = $computedDestinations->toObject();
 
-            foreach ($computedDestinationsToObject as $destination) {
-                // Ignore when full form is hidden
-                if (!$destination->ref->show_form) {
-                    continue;
-                }
-                // Ignore when inactive
-                if (!$destination->ref->is_active) {
-                    continue;
-                }
+            $typedDestinationList = $this->computeDestinationsTypedArray($this->deployArticleCommandState);
 
-                if (!$destination?->ref?->tokenindex) {
-                    continue;
-                }
-
-                $typedDestination = Destination::fromTokenIndex(TokenIndex::fromString($destination->ref->tokenindex));
-
-                // IMPORTANT!: Remember to set back the new state after using a "wither"
-                $this->deployArticleCommandState = $this->deployArticleCommandState->withDone(false);
-
-                // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
-                $isLocal = (bool)$destination->ref->is_local;
-
-                // For example: https://example.org/sample-data.csv';
-                $givenCsvUrl = PunycodeHelper::urlToUTF8(
-                    (string)$destination->ref->remote_file ?? ''
+            foreach ($typedDestinationList as $typedDestination) {
+                $this->csvReader(
+                    $this->deployArticleCommandState,
+                    $typedDestination
                 );
-                if ($isLocal) {
-                    $localCsvFileFromParams = $destination->ref->local_file ?? '';
-                    if (empty($localCsvFileFromParams)) {
-                        throw new InvalidArgumentException('CSV Url MUST NOT be empty', 422);
-                    }
-                    $localCsvFile = Path::clean(
-                        sprintf('%s/media/com_chococsv/data/%s', JPATH_ROOT, $localCsvFileFromParams)
-                    );
-                    if (is_readable($localCsvFile)) {
-                        $givenCsvUrl = $localCsvFile;
-                    }
-                }
-
-                $typedDestination = $typedDestination->withCsvUrl($givenCsvUrl);
-
-
-// Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
-                $whatLineNumbersYouWant = $destination->ref->what_line_numbers_you_want ?? '';
-
-                $typedDestination = $typedDestination->withExpandedLineNumbers($whatLineNumbersYouWant);
-
-                // Your Joomla! website base url
-                $typedDestination = $typedDestination->withBaseUrl($destination->ref->base_url ?? '');
-
-                // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
-                $typedDestination = $typedDestination->withToken($destination->ref->auth_apikey ?? '');
-                $typedDestination = $typedDestination->withBasePath(
-                    $destination->ref->base_path ?? '/api/index.php/v1'
-                );
-
-                // Other Joomla articles fields
-                $typedDestination = $typedDestination->withExtraDefaultFieldKeys(
-                    $destination->ref->extra_default_fields ?? []
-                );
-
-// Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
-// The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
-// For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
-                if ($destination?->ref?->toggle_custom_fields) {
-                    $givenCustomFields = $destination?->ref?->manually_custom_fields ?? []; // If not defined fallback to empty array
-                } else {
-                    $givenCustomFields = $destination?->ref?->custom_fields ?? [];
-                }
-                $typedDestination = $typedDestination->withCustomFieldKeys($givenCustomFields);
-
-                try {
-                    $this->csvReader(
-                        $this->deployArticleCommandState,
-                        $typedDestination
-                    );
-                } catch (Throwable $e) {
-                    $errorMessage = sprintf(
-                        '%s Error message: %s, Error code line: %d%s%s',
-                        ANSI_COLOR_RED,
-                        $e->getMessage(),
-                        $e->getLine(),
-                        ANSI_COLOR_NORMAL,
-                        CUSTOM_LINE_END
-                    );
-                    if (in_array($this->deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2])) {
-                        Log::add($errorMessage, Log::ERROR, self::LOG_CATEGORY);
-                    }
-                    if ($this->deployArticleCommandState->getSilent()->asInt() == 1) {
-                        $this->enqueueMessage(
-                            $errorMessage,
-                            'error'
-                        );
-                    }
-                } finally {
-                    $this->deployArticleCommandState->withDone(true);
-                    $this->enqueueMessage(sprintf('Done%s', CUSTOM_LINE_END));
-                }
             }
         } catch (Throwable $e) {
-            $this->enqueueMessage(
-                sprintf(
-                    '[%d] %s %s:%d Trace: %s Previous: %s',
-                    $e->getCode(),
-                    $e->getMessage(),
-                    $e->getFile(),
-                    $e->getLine(),
-                    $e->getTraceAsString(),
-                    $e->getPrevious() ? $e->getPrevious()->getTraceAsString() : ''
-                ),
-                'error'
+            $errorMessage = sprintf(
+                '%s[%d] %s %s:%d %s%s',
+                ANSI_COLOR_RED,
+                $e->getCode(),
+                $e->getMessage(),
+                basename($e->getFile()),
+                $e->getLine(),
+                ANSI_COLOR_NORMAL,
+                CUSTOM_LINE_END
             );
+            if (in_array($this->deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2])) {
+                Log::add($errorMessage, Log::ERROR, self::LOG_CATEGORY);
+            }
+            if ($this->deployArticleCommandState->getSilent()->asInt() == 1) {
+                $this->enqueueMessage(
+                    $errorMessage,
+                    'error'
+                );
+            }
             // Rethrow exception to make the command fail as it should on failure
             throw $e;
+        } finally {
+            $this->deployArticleCommandState->withDone(true);
+            $this->enqueueMessage(sprintf('Done%s', CUSTOM_LINE_END));
         }
     }
 
@@ -273,13 +190,101 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         return ComponentHelper::isInstalled('com_chococsv') && ComponentHelper::isEnabled('com_chococsv');
     }
 
-
     /**
-     * @return Registry
+     * @return array<Destination>
      */
-    private function getParams(): Registry
-    {
-        return ComponentHelper::getParams('com_chococsv', true);
+    private function computeDestinationsTypedArray(
+        DeployArticleCommandState $givenDeployArticleState
+    ): array {
+        $rawDestinations = $givenDeployArticleState->getDestinations();
+        if ($rawDestinations === []) {
+            return [];
+        }
+        $output = [];
+
+        $computedRawDestinations = (new Registry($rawDestinations))->toObject();
+
+        foreach ($computedRawDestinations as $destination) {
+            // Ignore when full form is hidden
+            if (!$destination?->ref?->show_form) {
+                continue;
+            }
+            // Ignore when inactive
+            if (!$destination?->ref?->is_active) {
+                continue;
+            }
+
+            if (!$destination?->ref?->tokenindex) {
+                continue;
+            }
+
+            $typedDestination = Destination::fromTokenIndex(
+                TokenIndex::fromString($destination?->ref?->tokenindex ?? '')
+            );
+
+            // IMPORTANT!: Remember to set back the new state after using a "wither"
+            $givenDeployArticleState = $givenDeployArticleState->withDone(false);
+            // Public url of the sample csv used in this example (CHANGE WITH YOUR OWN CSV URL OR LOCAL CSV FILE)
+            if ($destination?->ref?->is_local) {
+                $localCsvFileFromParams = trim(((string)($destination?->ref?->local_file ?? '')));
+
+                if (empty($localCsvFileFromParams)) {
+                    throw new InvalidArgumentException('CSV local cannot be empty', 422);
+                }
+
+                $computedLocalCsvFileFromParams =
+                    defined('PROJECT_TEST') ?
+                        Path::check(
+                            sprintf('%s%s/com_chococsv/data/%s', PROJECT_TEST, 'media', $localCsvFileFromParams),
+                            PROJECT_TEST
+                        ) :
+                        Path::check(
+                            sprintf('%s%s%s', JPATH_ROOT, '/media/com_chococsv/data/', $localCsvFileFromParams),
+                            JPATH_ROOT
+                        );
+                if (is_file($computedLocalCsvFileFromParams)) {
+                    $typedDestination = $typedDestination->withCsvUrl($computedLocalCsvFileFromParams);
+                }
+            } else {
+                // For example: https://example.org/sample-data.csv';
+                $remoteCsvFileFromParams = PunycodeHelper::urlToUTF8(
+                    (string)($destination?->ref?->remote_file ?? '')
+                );
+                $typedDestination = $typedDestination->withCsvUrl($remoteCsvFileFromParams);
+            }
+
+
+// Line numbers we want in any order (e.g. 9,7-7,2-4,10,17-14,21). Leave empty '' to process all lines (beginning at line 2. Same as csv file)
+            $whatLineNumbersYouWant = $destination?->ref?->what_line_numbers_you_want ?? '';
+
+            $typedDestination = $typedDestination->withExpandedLineNumbers($whatLineNumbersYouWant);
+
+            // Your Joomla! website base url
+            $typedDestination = $typedDestination->withBaseUrl($destination?->ref?->base_url ?? '');
+
+            // Your Joomla! Api Token (DO NOT STORE IT IN YOUR REPO USE A VAULT OR A PASSWORD MANAGER)
+            $typedDestination = $typedDestination->withToken($destination?->ref?->auth_apikey ?? '');
+            $typedDestination = $typedDestination->withBasePath(
+                $destination?->ref?->base_path ?? '/api/index.php/v1'
+            );
+
+            // Other Joomla articles fields
+            $typedDestination = $typedDestination->withExtraDefaultFieldKeys(
+                $destination?->ref?->extra_default_fields ?? []
+            );
+
+// Add custom fields support (shout-out to Marc DECHÈVRE : CUSTOM KING)
+// The keys are the columns in the csv with the custom fields names (that's how Joomla! Web Services Api work as of today)
+// For the custom fields to work they need to be added in the csv and to exists in the Joomla! site.
+            if ($destination?->ref?->toggle_custom_fields) {
+                $givenCustomFields = $destination?->ref?->manually_custom_fields ?? []; // If not defined fallback to empty array
+            } else {
+                $givenCustomFields = $destination?->ref?->custom_fields ?? [];
+            }
+            $typedDestination = $typedDestination->withCustomFieldKeys($givenCustomFields);
+            $output[] = $typedDestination;
+        }
+        return $output;
     }
 
 
@@ -312,7 +317,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
             }
         } elseif ($app instanceof CMSApplication) {
             $outputFormatter = [$app, 'enqueueMessage'];
-            $outputFormatter($message, $type) || $outputFormatter($message, 'message');
+            $outputFormatter($message, $type);
         }
     }
 
@@ -321,107 +326,80 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         DeployArticleCommandState $deployArticleCommandState,
         Destination $currentDestination
     ): void {
-        $mergedKeys = array_unique(
-            array_merge(
-                DeployArticleCommandState::DEFAULT_ARTICLE_KEYS,
-                $currentDestination?->getExtraDefaultFieldKeys()?->asArray() ?? [],
-                $currentDestination?->getCustomFieldKeys()?->asArray() ?? [],
-            )
-        );
+        $mergedKeys = CsvUtil::computeMergedKeys($currentDestination);
 
         // Assess robustness of the code by trying random key order
         //shuffle($mergedKeys);
 
-        $resource = fopen($currentDestination->getCsvUrl()->asString(), 'r');
+        $resource = fopen($currentDestination?->getCsvUrl()?->asString() ?? '', 'r');
 
         if ($resource === false) {
-            throw new RuntimeException('Could not read csv file', 500);
+            throw new RuntimeException('Could not read csv file', 0);
         }
 
         $linesYouWant = $currentDestination?->getExpandedLineNumbers()?->asArray() ?? [];
 
-        try {
-            CsvUtil::computeCsv(
-                $resource,
-                $linesYouWant,
-                $mergedKeys,
-                fn($successData) => $this->processEachCsvLineData(
+        CsvUtil::computeCsv(
+            $resource,
+            $linesYouWant,
+            $mergedKeys,
+            fn($successData) => ($combined = array_combine(
+                    $successData['csv_header'],
+                    $successData['csv_parsed']
+                )) && $this->processEachCsvLineData(
                     $successData['csv_line'],
-                    $successData['csv_parsed'],
+                    $combined,
                     $currentDestination
                 ),
-                fn($errorData) => ($deployArticleCommandState->getSilent()->asInt() == 1
-                        && $this->enqueueMessage(
-                            sprintf(
-                                "%s Error message: %s, Error code line: %ds%s%s",
-                                ANSI_COLOR_RED,
-                                $errorData->getMessage(),
-                                $errorData->getLine(),
-                                ANSI_COLOR_NORMAL,
-                                CUSTOM_LINE_END
-                            ),
-                            'error'
-                        )) || (
-                        in_array($deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)
-                        && Log::add(
-                            sprintf(
-                                "%s Error message: %s, Error code line: %ds%s%s",
-                                ANSI_COLOR_RED,
-                                $errorData->getMessage(),
-                                $errorData->getLine(),
-                                ANSI_COLOR_NORMAL,
-                                CUSTOM_LINE_END
-                            ),
-                            Log::ERROR,
-                            self::LOG_CATEGORY
-                        )
+            fn($errorData) => ($deployArticleCommandState->getSilent()->asInt() === 1
+                    && $this->enqueueMessage(
+                        sprintf(
+                            "%s Error message: %s, Error code line: %d%s%s",
+                            ANSI_COLOR_RED,
+                            $errorData->getMessage(),
+                            $errorData->getLine(),
+                            ANSI_COLOR_NORMAL,
+                            CUSTOM_LINE_END
+                        ),
+                        'error'
+                    )) || (
+                    in_array($deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)
+                    && Log::add(
+                        sprintf(
+                            "%s Error message: %s, Error code line: %d%s%s",
+                            ANSI_COLOR_RED,
+                            $errorData->getMessage(),
+                            $errorData->getLine(),
+                            ANSI_COLOR_NORMAL,
+                            CUSTOM_LINE_END
+                        ),
+                        Log::ERROR,
+                        self::LOG_CATEGORY
                     )
+                )
 
-            );
-        } catch (Throwable $e) {
-            $errorMessage = sprintf(
-                "%s Error message: %s, Error code line: %ds%s%s",
-                ANSI_COLOR_RED,
-                $e->getMessage(),
-                $e->getLine(),
-                ANSI_COLOR_NORMAL,
-                CUSTOM_LINE_END
-            );
-
-            if (in_array($deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)) {
-                Log::add($errorMessage, Log::ERROR, self::LOG_CATEGORY);
-            }
-
-            if ($deployArticleCommandState->getSilent()->asInt() == 1) {
-                $this->enqueueMessage(
-                    $errorMessage,
-                    'error'
-                );
-            }
-            throw $e;
-        } finally {
-            if (isset($resource) && is_resource($resource)) {
-                fclose($resource);
-            }
-        }
+        );
     }
 
     /**
      * @param int $dataCurrentCsvLine
-     * @param $data
+     * @param array $data
      * @param Destination $currentDestination
      * @return void
      * @throws Exception
      */
-    private function processEachCsvLineData(int $dataCurrentCsvLine, $data, Destination $currentDestination): void
+    private function processEachCsvLineData(int $dataCurrentCsvLine, array $data, Destination $currentDestination): void
     {
-        static $retries = 0;
         try {
-            $computedTokenIndex = TokenIndex::fromString($data['tokenindex']);
+            if (!isset($this->retries[$dataCurrentCsvLine])) {
+                $this->retries[$dataCurrentCsvLine] = 0;
+            }
+
+            $computedTokenIndex = TokenIndex::fromString($data['tokenindex'] ?? '');
 
             // If it's not matching token index stop here
             if (!$currentDestination->equals($computedTokenIndex)) {
-                throw new UnexpectedValueException('Token index mismatch. Skipping...', 422);
+                throw new TokenIndexMismatchException('CSV Line does not match configured destination tokenindex', 0);
             }
 
             // HTTP request headers
@@ -457,15 +435,12 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
             // don't show errors, handle them gracefully
             if (isset($decodedJsonOutput->errors)) {
                 // If article is potentially a duplicate (already exists with same alias)
-                if (isset($decodedJsonOutput->errors[0]->code) && $decodedJsonOutput->errors[0]->code === 400) {
+                if (isset($decodedJsonOutput->errors[0]->code) && $decodedJsonOutput->errors[0]->code == 400) {
                     // Change the alias
-                    $data['alias'] = StringHelper::increment(
-                        StringHelper::strtolower($data['alias']),
-                        'dash'
-                    );
+                    $data['alias'] = sprintf('%s-%s', $data['alias'], bin2hex(random_bytes(4)));
                     // Retry
-                    if ($retries < DeployArticleCommandState::MAX_RETRIES) {
-                        ++$retries;
+                    if ($this->retries[$dataCurrentCsvLine] < DeployArticleCommandState::MAX_RETRIES) {
+                        ++$this->retries[$dataCurrentCsvLine];
                         $this->processEachCsvLineData($dataCurrentCsvLine, $data, $currentDestination);
                     } else {
                         throw new RuntimeException(
@@ -474,41 +449,49 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                         );
                     }
                 }
-            } elseif (isset($decodedJsonOutput->data->attributes) && !isset($this->successfulCsvLines[$dataCurrentCsvLine])) {
+            } elseif (isset($decodedJsonOutput->data->attributes)) {
+                $successfulMessage = sprintf(
+                    "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
+                    ANSI_COLOR_GREEN,
+                    $data['tokenindex'],
+                    $dataCurrentCsvLine,
+                    $decodedJsonOutput->data->id,
+                    $decodedJsonOutput->data->attributes->created,
+                    $decodedJsonOutput->data->attributes->title,
+                    $decodedJsonOutput->data->attributes->alias,
+                    ANSI_COLOR_NORMAL,
+                    CUSTOM_LINE_END
+                );
                 if ($this->deployArticleCommandState->getSilent()->asInt() == 1) {
-                    $sucessfulMessage = sprintf(
-                        "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
-                        ANSI_COLOR_GREEN,
-                        $data['tokenindex'],
-                        $dataCurrentCsvLine,
-                        $decodedJsonOutput->data->id,
-                        $decodedJsonOutput->data->attributes->created,
-                        $decodedJsonOutput->data->attributes->title,
-                        $decodedJsonOutput->data->attributes->alias,
-                        ANSI_COLOR_NORMAL,
-                        CUSTOM_LINE_END
-                    );
-                    Log::add($sucessfulMessage, Log::DEBUG, '');
-                    $this->enqueueMessage($this->successfulCsvLines[$dataCurrentCsvLine]);
+                    $this->enqueueMessage($successfulMessage);
+                }
+                if (in_array($this->deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)) {
+                    Log::add($successfulMessage, Log::DEBUG, self::LOG_CATEGORY);
                 }
             }
+        } catch (TokenIndexMismatchException $tokenMismatchException) {
+            throw $tokenMismatchException; // Bubble up without notifying. It's not a failure
         } catch (Throwable $e) {
+            $errorMessage = sprintf(
+                "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
+                ANSI_COLOR_RED,
+                $e->getMessage(),
+                $e->getLine(),
+                $dataCurrentCsvLine,
+                ANSI_COLOR_NORMAL,
+                CUSTOM_LINE_END
+            );
             if ($this->deployArticleCommandState->getSilent()->asInt() == 1) {
+                $this->enqueueMessage($errorMessage, 'error');
+            }
+            if (in_array($this->deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)) {
                 Log::add(
-                    sprintf(
-                        "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
-                        ANSI_COLOR_RED,
-                        $e->getMessage(),
-                        $e->getLine(),
-                        $dataCurrentCsvLine,
-                        ANSI_COLOR_NORMAL,
-                        CUSTOM_LINE_END
-                    ),
+                    $errorMessage,
                     Log::ERROR,
                     self::LOG_CATEGORY
                 );
-                $this->enqueueMessage($this->failedCsvLines[$dataCurrentCsvLine], 'error');
             }
+            throw new RuntimeException($errorMessage, 0, $e);
         }
     }
 
@@ -539,7 +522,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         );
 
         if (empty($response)) {
-            throw new UnexpectedValueException('Invalid response received after Http request. Cannot continue', 422);
+            throw new UnexpectedValueException('Invalid response received after Http request. Cannot continue', 0);
         }
 
         return $response->body;
@@ -584,5 +567,20 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
     public static function testEndpoint($givenBaseUrl, $givenBasePath, $givenResourceId): string
     {
         return self::endpoint($givenBaseUrl, $givenBasePath, $givenResourceId);
+    }
+
+    public function testComputeDestinationsTypedArray($rawDestinations): array
+    {
+        return $this->computeDestinationsTypedArray($rawDestinations);
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 }

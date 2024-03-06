@@ -24,7 +24,7 @@ defined('_JEXEC') || die;
 
 final class CsvController extends BaseController
 {
-    public function deploy()
+    public function deploy(): void
     {
         // Wether or not to show ASCII banner true to show , false otherwise. Default is to show the ASCII art banner
         $givenShowAsciiBanner = (bool)$this->getParams()->get('show_ascii_banner', 0);
@@ -59,5 +59,15 @@ final class CsvController extends BaseController
     private function getParams(): Registry
     {
         return ComponentHelper::getParams($this->option ?? 'com_chococsv', true);
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 }

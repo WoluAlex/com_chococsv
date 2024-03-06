@@ -20,6 +20,8 @@ defined('_JEXEC') or die;
 
 interface TestableDeployContentInterface
 {
+    public function testComputeDestinationsTypedArray(DeployArticleCommandState $deployArticleCommandState);
+
     public function testCsvReader(
         DeployArticleCommandState $deployArticleCommandState,
         Destination $currentDestination

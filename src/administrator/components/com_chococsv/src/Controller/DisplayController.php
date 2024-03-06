@@ -22,4 +22,14 @@ defined('_JEXEC') or die;
 final class DisplayController extends BaseController
 {
     protected $default_view = 'chococsv';
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
+    }
 }

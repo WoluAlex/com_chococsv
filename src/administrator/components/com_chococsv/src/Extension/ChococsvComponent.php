@@ -38,7 +38,7 @@ class ChococsvComponent
      * If required, some initial set up can be done from services of the container, eg.
      * registering HTML services.
      *
-     * @param   ContainerInterface  $container  The container
+     * @param ContainerInterface $container The container
      *
      * @return  void
      *
@@ -47,5 +47,15 @@ class ChococsvComponent
     public function boot(ContainerInterface $container)
     {
         //NO-OP
+    }
+
+    public function __debugInfo(): ?array
+    {
+        return null;
+    }
+
+    public function __serialize(): array
+    {
+        return [];
     }
 }
