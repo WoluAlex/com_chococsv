@@ -24,6 +24,7 @@ use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Application\ConsoleApplication;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
+use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Log\Log;
 use Joomla\CMS\String\PunycodeHelper;
 use Joomla\CMS\Uri\Uri;
@@ -37,15 +38,20 @@ use Throwable;
 use UnexpectedValueException;
 
 use function array_combine;
+use function basename;
+use function bin2hex;
 use function define;
 use function defined;
 use function fopen;
 use function in_array;
 use function ini_set;
+use function is_file;
 use function json_decode;
 use function json_encode;
 use function random_bytes;
 use function sprintf;
+
+use function trim;
 
 use const ANSI_COLOR_BLUE;
 use const ANSI_COLOR_GREEN;
@@ -304,6 +310,9 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
             return;
         }
 
+        // Messages at most 72 characters
+        $message = HTMLHelper::_('string.truncate', $message, 72);
+
         $app = Factory::getApplication();
         if ($app instanceof ConsoleApplication) {
             $outputFormatter = new SymfonyStyle($app->getConsoleInput(), $app->getConsoleOutput());
@@ -354,7 +363,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
             fn($errorData) => ($deployArticleCommandState->getSilent()->asInt() === 1
                     && $this->enqueueMessage(
                         sprintf(
-                            "%s Error message: %s, Error code line: %d%s%s",
+                            "%s%s,ERROR-L:%d%s%s",
                             ANSI_COLOR_RED,
                             $errorData->getMessage(),
                             $errorData->getLine(),
@@ -366,7 +375,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                     in_array($deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)
                     && Log::add(
                         sprintf(
-                            "%s Error message: %s, Error code line: %d%s%s",
+                            "%s%s,ERROR-L:%d%s%s",
                             ANSI_COLOR_RED,
                             $errorData->getMessage(),
                             $errorData->getLine(),
@@ -450,18 +459,19 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                     }
                 }
             } elseif (isset($decodedJsonOutput->data->attributes)) {
-                $successfulMessage = sprintf(
-                    "%s Deployed to: %s, CSV Line: %d, id: %d, created: %s, title: %s, alias: %s%s%s",
-                    ANSI_COLOR_GREEN,
-                    $data['tokenindex'],
-                    $dataCurrentCsvLine,
-                    $decodedJsonOutput->data->id,
-                    $decodedJsonOutput->data->attributes->created,
-                    $decodedJsonOutput->data->attributes->title,
-                    $decodedJsonOutput->data->attributes->alias,
-                    ANSI_COLOR_NORMAL,
-                    CUSTOM_LINE_END
-                );
+                $successfulMessage =
+                    sprintf(
+                        "%s%s,L:%d,ID:%d,%s,%s,%s%s%s",
+                        ANSI_COLOR_GREEN,
+                        $data['tokenindex'],
+                        $dataCurrentCsvLine,
+                        $decodedJsonOutput->data->id,
+                        $decodedJsonOutput->data->attributes->created,
+                        HTMLHelper::_('string.abridge', $decodedJsonOutput->data->attributes->title, 30, 10),
+                        $decodedJsonOutput->data->attributes->alias,
+                        ANSI_COLOR_NORMAL,
+                        CUSTOM_LINE_END
+                    );
                 if ($this->deployArticleCommandState->getSilent()->asInt() == 1) {
                     $this->enqueueMessage($successfulMessage);
                 }
@@ -473,7 +483,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
             throw $tokenMismatchException; // Bubble up without notifying. It's not a failure
         } catch (Throwable $e) {
             $errorMessage = sprintf(
-                "%s Error message: %s, Error code line: %d, Error CSV Line: %d%s%s",
+                "%s%s,ERROR-L:%d,L:%d%s%s",
                 ANSI_COLOR_RED,
                 $e->getMessage(),
                 $e->getLine(),
