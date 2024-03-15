@@ -12,5 +12,5 @@ use AlexApi\Component\Chococsv\Administrator\Domain\Model\Common\AbstractValueOb
 
 final class TokenIndex extends AbstractValueObject
 {
-    protected const string REGEX = '([a-zA-Z]{1,20}\-?[a-zA-Z0-9]{1,19})';
+    protected const REGEX = '([a-zA-Z]{1,20}\-?[a-zA-Z0-9]{1,19})';
 }

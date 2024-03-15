@@ -15,7 +15,7 @@ use InvalidArgumentException;
 abstract class AbstractValueObject implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
     protected string $value;
-    protected const string REGEX = '([\p{C}\p{L}\p{M}\p{N}\p{P}\p{S}\p{Z}]{1,65535})';
+    protected const REGEX = '([\p{C}\p{L}\p{M}\p{N}\p{P}\p{S}\p{Z}]{1,65535})';
 
     private function __construct(string $givenValue)
     {

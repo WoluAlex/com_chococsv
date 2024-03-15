@@ -16,7 +16,7 @@ use function implode;
 final class CustomFieldFieldKeys
 {
     private array $customFieldKeys;
-    private const array DENIED = [];
+    private const DENIED = [];
 
     private function __construct(array $customFieldKeys)
     {

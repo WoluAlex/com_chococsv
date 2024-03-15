@@ -49,6 +49,7 @@
   "scripts": {
     "gen": [
       "@minimal",
+      "@perf",
       "@build"
     ],
     "build": "export current_hash=\"$(git log HEAD -n 1 --pretty=format:\"%H\")\" && { mkdir -p ./build && cd ./src [ ! -f \"$(dirname $PWD)/build/$(basename $(dirname $PWD))_${current_hash}.zip\" ] && zip -9 -r $(dirname $PWD)/build/$(basename $(dirname $PWD))_${current_hash}.zip . && cd .. ; }",
@@ -66,13 +67,12 @@
     ],
     "perf": [
       "@putenv NO_COLOR=1",
-      "php vendor/bin/phpbench run --config=phpbench.json --report=all"
+      "vendor/bin/phpbench run --config=phpbench.json --report=all"
     ],
     "minimal": [
       "@deptrac",
       "@docs",
-      "@test",
-      "@perf"
+      "@test"
     ]
   }
 }
