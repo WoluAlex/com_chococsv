@@ -52,7 +52,6 @@ return new class () implements ServiceProviderInterface {
                 ];
 
                 protected $deleteFiles = [
-                    '/administrator/components/com_chococsv/config.xml',
                     '/administrator/components/com_chococsv/LICENSE.txt',
                     '/components/com_chococsv/LICENSE.txt',
                 ];
