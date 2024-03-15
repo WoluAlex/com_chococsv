@@ -31,7 +31,7 @@
         </field>
         <field name="silent_mode"
                type="radio"
-               default="0"
+               default="1"
                label="COM_CHOCOCSV_SILENT_MODE_LABEL"
                description="COM_CHOCOCSV_SILENT_MODE_DESCRIPTION"
                layout="joomla.form.field.radio.buttons"
@@ -43,7 +43,7 @@
         </field>
         <field name="save_report_to_file"
                type="radio"
-               default="0"
+               default="1"
                label="COM_CHOCOCSV_SAVE_REPORT_TO_FILE_LABEL"
                description="COM_CHOCOCSV_SAVE_REPORT_TO_FILE_DESCRIPTION"
                layout="joomla.form.field.radio.buttons"
