@@ -71,9 +71,6 @@ return new class () implements ServiceProviderInterface {
                         sprintf('%s %s version: %s', ucfirst($type), $this->extension, $parent->getManifest()->version)
                     );
 
-                    // Not called automatically
-                    $this->removeFiles();
-
                     return true;
                 }
 
@@ -93,6 +90,9 @@ return new class () implements ServiceProviderInterface {
                         sprintf('%s %s version: %s', 'Install', $this->extension, $parent->getManifest()->version)
                     );
 
+                    // Not called automatically
+                    $this->removeFiles();
+
                     return true;
                 }
 
@@ -101,6 +101,9 @@ return new class () implements ServiceProviderInterface {
                     $this->app->enqueueMessage(
                         sprintf('%s %s version: %s', 'Update', $this->extension, $parent->getManifest()->version)
                     );
+
+                    // Not called automatically
+                    $this->removeFiles();
 
                     return true;
                 }
