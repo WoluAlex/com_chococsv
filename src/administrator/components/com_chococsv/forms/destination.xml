@@ -80,6 +80,7 @@
             </field>
             <field name="local_file"
                    type="filelist"
+                   default="sample-data.csv"
                    label="COM_CHOCOCSV_LOCAL_FILE_LABEL"
                    description="COM_CHOCOCSV_LOCAL_FILE_DESCRIPTION"
                    directory="media/com_chococsv/data"
@@ -122,7 +123,7 @@
                     hint="publish_up,publish_down,featured,featured_up,featured_down,images,urls"
                     multiple="true"
                     required="false"
-                    default=""
+                    default="publish_up,publish_down,featured,featured_up,featured_down,images,urls"
                     class="chococsv__destination--extradf"
                     showon="show_form:1"
             >

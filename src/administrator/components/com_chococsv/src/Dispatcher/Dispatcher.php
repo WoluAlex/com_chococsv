@@ -28,6 +28,8 @@ defined('_JEXEC') or die;
 
 class Dispatcher extends ComponentDispatcher
 {
+    protected $option = 'com_chococsv';
+
     protected function loadLanguage(): void
     {
         $this->app->getLanguage()->load($this->option, JPATH_BASE) || $this->app->getLanguage()->load(
