@@ -17,7 +17,7 @@ final class ExtraDefaultFieldKeys
 {
     private array $extraDefaultFieldKeys = [];
 
-    private const array ALLOWED = [
+    private const ALLOWED = [
         'publish_up',
         'publish_down',
         'featured',

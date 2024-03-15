@@ -12,7 +12,7 @@ use InvalidArgumentException;
 
 final class SilentMode
 {
-    private const array ALLOWED = [0, 1, 2];
+    private const ALLOWED = [0, 1, 2];
 
     private int $silent = 0;
 
