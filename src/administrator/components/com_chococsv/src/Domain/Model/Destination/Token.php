@@ -14,7 +14,7 @@ use SensitiveParameter;
 
 final class Token implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
-    private string $token;
+    private readonly string $token;
 
 
     private function __construct(string $value)

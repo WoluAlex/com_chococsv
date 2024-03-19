@@ -42,8 +42,6 @@ use const SORT_NATURAL;
 final class CsvUtil
 {
     /**
-     * @param string $wantedLineNumbers
-     *
      * @return array|int[]
      */
     public static function chooseLinesLikeAPrinter(string $wantedLineNumbers = '', int $csvActualStartLine = 2): array
@@ -113,9 +111,6 @@ final class CsvUtil
 
     /**
      * @param $resource
-     * @param array $linesYouWant
-     * @param callable $success
-     * @param callable $error
      * @return void
      */
     public static function computeCsv(
@@ -163,7 +158,7 @@ final class CsvUtil
                             'csv_header' => $computedCsvHeader,
                             'csv_parsed' => $computed,
                         ]);
-                    } catch (TokenIndexMismatchException $tokenMismatchException) {
+                    } catch (TokenIndexMismatchException) {
                         // Happens when destination is not configured or disabled
                         // For specific CSV line matching that tokenindex
                         // For example when app-002 is disabled in destinations configuration. It is not a failure per-se it's how we manage this in chococsv
@@ -192,7 +187,6 @@ final class CsvUtil
 
 
     /**
-     * @param Destination $currentDestination
      * @return array
      */
     public static function computeMergedKeys(Destination $currentDestination): array

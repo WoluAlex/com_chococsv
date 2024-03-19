@@ -50,7 +50,7 @@ class Dispatcher extends ComponentDispatcher
                     '%s.%s',
                     $this->option,
                     strtolower(
-                        $this->app->getName()
+                        (string) $this->app->getName()
                     )
                 )
             );

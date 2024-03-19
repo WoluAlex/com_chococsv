@@ -105,12 +105,12 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
     /**
      * @var TransportInterface|null
      */
-    private TransportInterface|null $transport;
+    private TransportInterface|null $transport = null;
 
     /**
      * @var StyleInterface|null
      */
-    private StyleInterface|null $consoleOutputStyle;
+    private StyleInterface|null $consoleOutputStyle = null;
 
     private function __construct(private DeployArticleCommandState $deployArticleCommandState)
     {
@@ -295,9 +295,6 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
 
 
     /**
-     * @param string $message
-     * @param string $type
-     *
      * @return void
      * @throws Exception
      */
@@ -391,9 +388,6 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
     }
 
     /**
-     * @param int $dataCurrentCsvLine
-     * @param array $data
-     * @param Destination $currentDestination
      * @return void
      * @throws Exception
      */
@@ -430,8 +424,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                 ),
                 $data,
                 $headers,
-                DeployArticleCommandState::REQUEST_TIMEOUT,
-                self::USER_AGENT
+                DeployArticleCommandState::REQUEST_TIMEOUT
             );
 
             $decodedJsonOutput = json_decode(
@@ -506,11 +499,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
     }
 
     /**
-     * @param string $givenHttpVerb
-     * @param string $endpoint
      * @param array|null $data
-     * @param array $headers
-     * @param int $timeout
      *
      * @return string
      */
