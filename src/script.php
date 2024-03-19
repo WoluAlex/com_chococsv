@@ -48,7 +48,8 @@ return new class () implements ServiceProviderInterface {
                     '/administrator/components/com_chococsv/language',
                     '/administrator/components/com_chococsv/services',
                     '/administrator/components/com_chococsv/src',
-                    '/components/com_chococsv/src'
+                    '/components/com_chococsv/src',
+                    '/media/com_chococsv/report'
                 ];
 
                 public function __construct(private readonly AdministratorApplication $app)

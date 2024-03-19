@@ -171,7 +171,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
                 ANSI_COLOR_NORMAL,
                 CUSTOM_LINE_END
             );
-            if (in_array($this->deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2])) {
+            if (in_array($this->deployArticleCommandState->getSaveReportToFile()->asInt(), [1, 2], true)) {
                 Log::add($errorMessage, Log::ERROR, self::LOG_CATEGORY);
             }
             if ($this->deployArticleCommandState->getSilent()->asInt() == 1) {

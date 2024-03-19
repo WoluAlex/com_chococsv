@@ -80,6 +80,7 @@
       "vendor/bin/rector --config=rector.php --no-ansi"
     ],
     "minimal": [
+      "@refactor-apply",
       "@deptrac",
       "@docs",
       "@test-isolation"
