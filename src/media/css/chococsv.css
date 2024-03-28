@@ -1,0 +1,7 @@
+/**
+ * com_chococsv stylesheet
+ */
+.chococsv__destination--apikey:not(:focus) {
+    color: transparent;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}

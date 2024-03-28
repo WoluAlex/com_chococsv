@@ -13,7 +13,7 @@ use Joomla\CMS\Router\Route;
 extract($displayData ?? [], EXTR_SKIP);
 ?>
 <div class="d-grid gap-4 d-md-flex justify-content-md-start">
-    <a class="btn btn-primary me-md-2" href="<?php echo Route::link('administrator', 'index.php?option=com_plugins&view=plugins&filter[folder]=console&filter[element]=chococsv', false); ?>"  target="_blank" rel="noopener"><?php echo Text::_('COM_CHOCOCSV_DEPLOY_ARTICLES_FROM_CONSOLE'); ?></a>
-
-    <a class="btn btn-success me-md-2" href="<?php echo Route::link('site', 'index.php?option=com_chococsv&task=csv.deploy', false); ?>"  target="_blank" rel="noopener"><?php echo Text::_('COM_CHOCOCSV_DEPLOY_ARTICLES_FROM_SITE'); ?></a>
+    <a class="btn btn-success me-md-2" href="<?php echo Route::link('site', 'index.php?option=com_chococsv&task=csv.deploy', false); ?>"  target="_blank" rel="noopener"><span class="fa-solid fa-gears"></span>&nbsp;<?php echo Text::_('COM_CHOCOCSV_DEPLOY_ARTICLES_FROM_SITE'); ?></a>
+    <a class="btn btn-primary me-md-2" href="<?php echo Route::link('administrator', 'index.php?option=com_plugins&view=plugins&filter[folder]=console&filter[element]=chococsv', false); ?>"  target="_blank" rel="noopener"><span class="fa-solid fa-terminal"></span>&nbsp;<?php echo Text::_('COM_CHOCOCSV_DEPLOY_ARTICLES_FROM_CONSOLE'); ?></a>
+    <a class="btn btn-dark me-md-2" href="https://github.com/WoluAlex/com_chococsv/blob/main/README.md"  target="_blank" rel="noopener"><span class="fa-brands fa-github"></span>&nbsp;<?php echo Text::_('COM_CHOCOCSV_README'); ?></a>
 </div>

@@ -4,7 +4,7 @@
          bootstrap="bootstrap.php">
     <testsuites>
         <testsuite name="Project">
-            <directory>Tests/Isolation</directory>
+            <directory>Tests</directory>
         </testsuite>
     </testsuites>
     <coverage pathCoverage="true" ignoreDeprecatedCodeUnits="true"

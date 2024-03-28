@@ -33,7 +33,7 @@ return new class () implements ServiceProviderInterface {
                  * @var    string
                  * @since  0.1.0
                  */
-                protected $minimumPhp = '8.2.0';
+                protected $minimumPhp = '8.1.0';
 
                 /**
                  * Minimum Joomla version to check
@@ -41,27 +41,38 @@ return new class () implements ServiceProviderInterface {
                  * @var    string
                  * @since  0.1.0
                  */
-                protected $minimumJoomla = '5.0.0';
+                protected $minimumJoomla = '4.0.0';
 
                 protected $deleteFolders = [
                     '/administrator/components/com_chococsv/forms',
                     '/administrator/components/com_chococsv/language',
                     '/administrator/components/com_chococsv/services',
                     '/administrator/components/com_chococsv/src',
-                    '/components/com_chococsv/src'
+                    '/components/com_chococsv/src',
+                    '/media/com_chococsv/css',
+                    '/media/com_chococsv/data',
+                    '/media/com_chococsv/images',
+                    '/media/com_chococsv/js',
+                    '/media/com_chococsv/report',
                 ];
 
-                private $app;
+                protected $deleteFiles = [
+                    '/media/com_chococsv/joomla.asset.json',
+                ];
 
-                public function __construct(AdministratorApplication $app)
+                public function __construct(private readonly AdministratorApplication $app)
                 {
-                    $this->app = $app;
                 }
 
                 public function preflight($type, $parent): bool
                 {
+                    $outcome = parent::preflight($type, $parent);
+                    if(!$outcome) {
+                        return false;
+                    }
+
                     $this->app->enqueueMessage(
-                        sprintf('%s %s version: %s', ucfirst($type), $this->extension, $parent->getManifest()->version)
+                        sprintf('%s %s version: %s', ucfirst((string) $type), $this->extension, $parent->getManifest()->version)
                     );
 
                     // Not called automatically
@@ -74,7 +85,7 @@ return new class () implements ServiceProviderInterface {
                 public function postflight($type, $parent): bool
                 {
                     $this->app->enqueueMessage(
-                        sprintf('%s %s version: %s', ucfirst($type), $this->extension, $parent->getManifest()->version)
+                        sprintf('%s %s version: %s', ucfirst((string) $type), $this->extension, $parent->getManifest()->version)
                     );
 
                     return true;

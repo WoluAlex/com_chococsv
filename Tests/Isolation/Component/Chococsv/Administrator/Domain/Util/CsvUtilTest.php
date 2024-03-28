@@ -12,8 +12,6 @@ namespace Tests\Isolation\Component\Chococsv\Administrator\Domain\Util;
 use AlexApi\Component\Chococsv\Administrator\Domain\Model\State\DeployArticleCommandState;
 use AlexApi\Component\Chococsv\Administrator\Domain\Util\CsvUtil;
 use Tests\Isolation\IsolationTestCase;
-
-use function AlexApi\Component\Chococsv\Administrator\Command\null;
 use function fopen;
 use function print_r;
 use function range;

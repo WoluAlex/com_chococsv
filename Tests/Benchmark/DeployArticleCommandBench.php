@@ -43,7 +43,6 @@ final class DeployArticleCommandBench
                     'tokenindex' => 'app-001',
                     'base_url' => 'http://192.168.42.24:62780',
                     'base_path' => '/api/index.php/v1',
-                    'show_form' => 1,
                     'is_active' => 1,
                     'auth_apikey' => 'YourJoomlaApiToken',
                     'is_local' => 1,
@@ -59,7 +58,6 @@ final class DeployArticleCommandBench
             [
                 'ref' => [
                     'tokenindex' => 'app-002',
-                    'show_form' => 0,
                     'is_active' => 0,
                 ]
             ],

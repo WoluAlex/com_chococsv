@@ -13,8 +13,8 @@ use AlexApi\Component\Chococsv\Administrator\Domain\Util\CsvUtil;
 
 final class ExpandedLineNumbers
 {
-    private bool $isCurrentlyExpanded;
-    private array $expandedLineNumbers;
+    private readonly bool $isCurrentlyExpanded;
+    private readonly array $expandedLineNumbers;
 
     private function __construct(array $expandedLineNumbers)
     {

@@ -36,7 +36,7 @@ final class Dispatcher extends \AlexApi\Component\Chococsv\Administrator\Dispatc
                     '%s.%s',
                     $this->option,
                     strtolower(
-                        $this->app->getName()
+                        (string) $this->app->getName()
                     )
                 )
             );

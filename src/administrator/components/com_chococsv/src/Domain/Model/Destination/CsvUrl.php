@@ -17,7 +17,7 @@ use function str_contains;
 
 final class CsvUrl implements StringAwareValueObjectInterface, ComparableValueObjectInterface
 {
-    private string $csvUrl;
+    private readonly string $csvUrl;
 
     private function __construct(string $csvUrl)
     {

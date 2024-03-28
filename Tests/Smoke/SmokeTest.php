@@ -145,7 +145,7 @@ final class SmokeTest extends TestCase
         // HTTP request headers
         $headers = [
             'Accept' => 'application/vnd.api+json',
-            'X-Joomla-Token' => trim(self::$apiConfig['chococsv001']['JOOMLA_API_TOKEN']),
+            'X-Joomla-Token' => trim((string) self::$apiConfig['chococsv001']['JOOMLA_API_TOKEN']),
         ];
         // Timeout in seconds
         $timeout = 3;
@@ -167,7 +167,7 @@ final class SmokeTest extends TestCase
 
     private function asyncRequest($verb, $uri, $dataString, $headers, $timeout, $userAgent): Generator
     {
-        yield $this->client->request(strtoupper($verb), $uri, $dataString, $headers, $timeout, $userAgent);
+        yield $this->client->request(strtoupper((string) $verb), $uri, $dataString, $headers, $timeout, $userAgent);
     }
 
     private static function getUrlMap(): array
