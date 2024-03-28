@@ -211,11 +211,7 @@ final class DeployArticleCommand implements DeployContentInterface, TestableDepl
         $computedRawDestinations = (new Registry($rawDestinations))->toObject();
 
         foreach ($computedRawDestinations as $destination) {
-            // Ignore when full form is hidden
-            if (!$destination?->ref?->show_form) {
-                continue;
-            }
-            // Ignore when inactive
+            // Ignore when not active
             if (!$destination?->ref?->is_active) {
                 continue;
             }

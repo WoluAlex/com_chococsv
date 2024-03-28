@@ -1,0 +1,32 @@
+{
+  "$schema": "https://developer.joomla.org/schemas/json-schema/web_assets.json",
+  "name": "com_chococsv",
+  "version": "0.21.0",
+  "description": "This file contains details of the assets used by Chococsv Component",
+  "license": "AGPL-3.0-or-later",
+  "assets": [
+    {
+      "name": "com_chococsv.chococsv",
+      "type": "style",
+      "uri": "com_chococsv/chococsv.css"
+    },
+    {
+      "name": "com_chococsv.chococsv",
+      "type": "script",
+      "uri": "com_chococsv/chococsv.js",
+      "attributes": {
+        "relative": "true",
+        "module": "true",
+        "version": "auto"
+      }
+    },
+    {
+      "name": "com_chococsv.chococsv",
+      "type": "preset",
+      "dependencies": [
+        "com_chococsv.chococsv#style",
+        "com_chococsv.chococsv#script"
+      ]
+    }
+  ]
+}

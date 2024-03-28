@@ -49,7 +49,15 @@ return new class () implements ServiceProviderInterface {
                     '/administrator/components/com_chococsv/services',
                     '/administrator/components/com_chococsv/src',
                     '/components/com_chococsv/src',
-                    '/media/com_chococsv/report'
+                    '/media/com_chococsv/css',
+                    '/media/com_chococsv/data',
+                    '/media/com_chococsv/images',
+                    '/media/com_chococsv/js',
+                    '/media/com_chococsv/report',
+                ];
+
+                protected $deleteFiles = [
+                    '/media/com_chococsv/joomla.asset.json',
                 ];
 
                 public function __construct(private readonly AdministratorApplication $app)

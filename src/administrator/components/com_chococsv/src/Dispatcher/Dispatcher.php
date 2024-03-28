@@ -10,8 +10,11 @@ declare(strict_types=1);
 
 namespace AlexApi\Component\Chococsv\Administrator\Dispatcher;
 
+use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Dispatcher\ComponentDispatcher;
+use Joomla\CMS\Document\HtmlDocument;
 use Joomla\CMS\Log\Log;
+use Joomla\CMS\WebAsset\WebAssetManager;
 use Throwable;
 
 use function defined;
@@ -41,6 +44,7 @@ class Dispatcher extends ComponentDispatcher
     public function dispatch(): void
     {
         try {
+            $this->loadAssets();
             parent::dispatch();
         } catch (Throwable $e) {
             Log::add(
@@ -50,11 +54,34 @@ class Dispatcher extends ComponentDispatcher
                     '%s.%s',
                     $this->option,
                     strtolower(
-                        (string) $this->app->getName()
+                        (string)$this->getApplication()->getName()
                     )
                 )
             );
         }
+    }
+
+    private function loadAssets(): void
+    {
+        // Might be Console Application stop here
+        if (!($this->getApplication() instanceof CMSApplication)) {
+            return;
+        }
+
+        $document = $this->getApplication()->getDocument();
+
+        // Not an Html Document. Hence cannot use Html related stuff. Stop here
+        if (!($document instanceof HtmlDocument)) {
+            return;
+        }
+
+        /**
+         * @var WebAssetManager $wa
+         */
+        $wa = $document->getWebAssetManager();
+
+        $wa->getRegistry()->addExtensionRegistryFile($this->option ?? 'com_chococsv');
+        $wa->usePreset('com_chococsv.chococsv');
     }
 
     public function __debugInfo(): ?array
